@@ -1,88 +1,62 @@
+import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader, Dataset
+from torchvision import transforms, datasets
+from torch.utils.data import DataLoader
+import torchvision.models as models
 
-# Step 1: Define a Custom Dataset
-class HandwritingDataset(Dataset):
-    def __init__(self, data, labels, transform=None):
-        self.data = data
-        self.labels = labels
-        self.transform = transform
+# Define hyperparameters
+batch_size = 32
+learning_rate = 0.001
+num_epochs = 20
 
-    def __len__(self):
-        return len(self.data)
+# Specify the path to your 'data' folder
+data_dir = '.\data'
 
-    def __getitem__(self, idx):
-        sample = self.data[idx]
-        label = self.labels[idx]
+# Define data transformations
+data_transforms = {
+    'train': transforms.Compose([
+        transforms.Resize((224, 224)),  # Resize the image
+        transforms.ToTensor(),           # Convert to tensor
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])  # Normalize
+    ]),
+    'val': transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ]),
+}
 
-        if self.transform:
-            sample = self.transform(sample)
+# Load the data
+data_transforms = data_transforms['train']
+image_datasets = datasets.ImageFolder(os.path.join(data_dir, 'Cerebral Palsy'), data_transforms)
+dataloaders = DataLoader(image_datasets, batch_size=batch_size, shuffle=True)
 
-        return sample, label
+# Define the model
+model = models.resnet18(pretrained=True)  # You can choose a different pre-trained model
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, len(image_datasets.classes))  # Adjust output layer for your number of classes
 
-# Step 2: Define a Convolutional Neural Network (CNN)
-class HandwritingCNN(nn.Module):
-    def __init__(self, num_classes):
-        super(HandwritingCNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.fc1 = nn.Linear(64 * 7 * 7, 128)
-        self.fc2 = nn.Linear(128, num_classes)
-
-    def forward(self, x):
-        x = torch.relu(self.conv1(x))
-        x = torch.relu(self.conv2(x))
-        x = x.view(x.size(0), -1)
-        x = torch.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
-
-# Step 3: Load Data and Preprocess
-# You need to load your handwriting dataset here and preprocess it, including data augmentation if needed.
-
-# Step 4: Create Data Loaders
-batch_size = 64
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-test_loader = DataLoader(test_dataset, batch_size=batch_size)
-
-# Step 5: Initialize the Model and Define Loss Function and Optimizer
-model = HandwritingCNN(num_classes)  # Replace num_classes with the number of classes in your dataset
+# Define loss function and optimizer
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-# Step 6: Train the Model
-num_epochs = 10
+# Train the model
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
 for epoch in range(num_epochs):
-    model.train()
     running_loss = 0.0
-
-    for i, (images, labels) in enumerate(train_loader):
+    for inputs, labels in dataloaders:
+        inputs, labels = inputs.to(device), labels.to(device)
         optimizer.zero_grad()
-        outputs = model(images)
+        outputs = model(inputs)
         loss = criterion(outputs, labels)
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
+    print(f'Epoch {epoch+1}/{num_epochs}, Loss: {running_loss/len(dataloaders)}')
 
-    print(f"Epoch {epoch + 1}, Loss: {running_loss / len(train_loader)}")
-
-# Step 7: Evaluate the Model
-model.eval()
-correct = 0
-total = 0
-
-with torch.no_grad():
-    for images, labels in test_loader:
-        outputs = model(images)
-        _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
-        correct += (predicted == labels).sum().item()
-
-print(f"Accuracy: {100 * correct / total}%")
-
-# Step 8: Save the Trained Model
-torch.save(model.state_dict(), 'handwriting_model.pth')
+# Save the trained model
+torch.save(model.state_dict(), 'model.pth')
