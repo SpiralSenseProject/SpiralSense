@@ -12,18 +12,18 @@ learning_rate = 0.001
 num_epochs = 20
 
 # Specify the path to your 'data' folder
-data_dir = '.\data\\train\\Task 1'
+data_dir = './data/train/Task 1'
 
 # Define data transformations
 data_transforms = {
     'train': transforms.Compose([
-        transforms.Resize((224, 224)),  # Resize the image
+        transforms.Resize((1680, 940)),  # Resize the image
         transforms.Grayscale(num_output_channels=3),  # Convert to grayscale
         transforms.ToTensor(),           # Convert to tensor
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])  # Normalize
     ]),
     'val': transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((1680, 940)),
         transforms.Grayscale(num_output_channels=3),  # Convert to grayscale
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
@@ -46,7 +46,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 # Train the model
-device = torch.device("cuda")
+device = torch.device("cpu")
 model.to(device)
 
 for epoch in range(num_epochs):
