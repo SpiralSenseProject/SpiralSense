@@ -10,7 +10,7 @@ from torchvision.datasets import ImageFolder
 # Constants
 RANDOM_SEED = 123
 BATCH_SIZE = 64
-NUM_EPOCHS = 30
+NUM_EPOCHS = 50
 LEARNING_RATE = 0.001
 STEP_SIZE = 10
 GAMMA = 0.5
@@ -18,7 +18,7 @@ DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 NUM_PRINT = 100
 
 # Load and preprocess the data
-data_dir = r"data\train\Task 1"
+data_dir = r"17flowers/jpg"
 
 # Define transformation for preprocessing
 preprocess = transforms.Compose([
@@ -43,14 +43,15 @@ class CustomDataset(Dataset):
         return img, label
 
 # Split the dataset into train and validation sets
-train_size = int(0.9 * len(dataset))
+train_size = int(0.8 * len(dataset))
 val_size = len(dataset) - train_size
 train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
 # Create data loaders for the custom dataset
 train_loader = DataLoader(CustomDataset(train_dataset), batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 valid_loader = DataLoader(CustomDataset(val_dataset), batch_size=BATCH_SIZE, num_workers=0)
-    #VGG16 model
+
+#VGG16 model
 class VGG16(torch.nn.Module):
 
         def __init__(self, num_classes):
@@ -202,6 +203,7 @@ model = model.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum=0.8, weight_decay=0.001)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
+print(dataset.classes)
 
 # Training loop
 for epoch in range(NUM_EPOCHS):
@@ -226,3 +228,22 @@ for epoch in range(NUM_EPOCHS):
     lr_1 = optimizer.param_groups[0]['lr']
     print("Learning Rate: {:.15f}".format(lr_1))
     scheduler.step()
+
+# Validation loop
+val_loss = 0.0
+model.eval()  # Set model to evaluation mode
+with torch.no_grad():
+    for data, targets in valid_loader:
+        data, targets = data.to(DEVICE), targets.to(DEVICE)
+        outputs = model(data)
+        loss = criterion(outputs, targets)
+        val_loss += loss.item()
+
+# Average validation loss
+val_loss /= len(valid_loader)
+print('Average Validation Loss: {:.6f}'.format(val_loss))
+
+# Save the model
+model_save_path = 'model.pth'
+torch.save(model.state_dict(), model_save_path)
+print('Model saved at', model_save_path)

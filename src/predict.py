@@ -1,47 +1,205 @@
+import os
 import torch
-from torchvision import models, transforms
+import torch.nn as nn
+from torchvision import transforms
 from PIL import Image
 
-# Define a function to load the model
-def load_model(model_path):
-    model = models.resnet18(pretrained=True)  # Load a pre-trained ResNet-18 model as an example
-    num_ftrs = model.fc.in_features
-    model.fc = torch.nn.Linear(num_ftrs, 6)  # Replace the last fully connected layer for your specific task
-    model.load_state_dict(torch.load(model_path))
-    model.eval()
-    return model
-
-# Define a function to preprocess the input image
-def preprocess_image(image_path):
-    transform = transforms.Compose([
-        transforms.CenterCrop((1680, 940)),
-        transforms.Grayscale(num_output_channels=3),  # Convert to grayscale
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])  # Normalize
-    ])
-    image = Image.open(image_path)
-    image = transform(image).unsqueeze(0)  # Add a batch dimension
-    return image
-
-# Define the path to your trained model
-model_path = 'model.pth'  # Replace with the actual path to your model file
-
-# Load the model
-model = load_model(model_path)
+# Define the path to your model checkpoint
+model_checkpoint_path = "model.pth"
 
 # Define the path to the image you want to classify
-image_path = 'data/test/Task 1/test_cerebral_palsy.png'  # Replace with the actual path to your image file
-# image_path = 'test_cerebral_palsy.png'  # Replace with the actual path to your image file
+image_path = r"17flowers\test\1\image_0240.jpg"
 
-# Preprocess the image
-input_image = preprocess_image(image_path)
+
+# Load the model
+class VGG16(torch.nn.Module):
+    def __init__(self, num_classes):
+        super().__init__()
+
+        self.block_1 = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                in_channels=3,
+                out_channels=64,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(
+                in_channels=64,
+                out_channels=64,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
+        )
+
+        self.block_2 = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                in_channels=64,
+                out_channels=128,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(
+                in_channels=128,
+                out_channels=128,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
+        )
+
+        self.block_3 = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                in_channels=128,
+                out_channels=256,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(
+                in_channels=256,
+                out_channels=256,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(
+                in_channels=256,
+                out_channels=256,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
+        )
+
+        self.block_4 = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                in_channels=256,
+                out_channels=512,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(
+                in_channels=512,
+                out_channels=512,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(
+                in_channels=512,
+                out_channels=512,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
+        )
+
+        self.block_5 = torch.nn.Sequential(
+            torch.nn.Conv2d(
+                in_channels=512,
+                out_channels=512,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(
+                in_channels=512,
+                out_channels=512,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(
+                in_channels=512,
+                out_channels=512,
+                kernel_size=(3, 3),
+                stride=(1, 1),
+                padding=1,
+            ),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=(2, 2), stride=(2, 2)),
+        )
+
+        height, width = 3, 3
+        self.classifier = torch.nn.Sequential(
+            torch.nn.Linear(512 * height * width, 4096),
+            torch.nn.ReLU(True),
+            torch.nn.Dropout(p=0.5),
+            torch.nn.Linear(4096, 4096),
+            torch.nn.ReLU(True),
+            torch.nn.Dropout(p=0.5),
+            torch.nn.Linear(4096, num_classes),
+        )
+
+        for m in self.modules():
+            if isinstance(m, torch.torch.nn.Conv2d) or isinstance(
+                m, torch.torch.nn.Linear
+            ):
+                torch.nn.init.kaiming_uniform_(
+                    m.weight, mode="fan_in", nonlinearity="relu"
+                )
+                if m.bias is not None:
+                    m.bias.detach().zero_()
+
+        self.avgpool = torch.nn.AdaptiveAvgPool2d((height, width))
+
+    def forward(self, x):
+        x = self.block_1(x)
+        x = self.block_2(x)
+        x = self.block_3(x)
+        x = self.block_4(x)
+        x = self.block_5(x)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)  # flatten
+
+        logits = self.classifier(x)
+        # probas = F.softmax(logits, dim=1)
+
+        return logits
+
+
+model = VGG16(num_classes=5)  # Make sure to adjust the number of classes if needed
+model.load_state_dict(torch.load(model_checkpoint_path))
+model.eval()
+
+# Define transformation for preprocessing the input image
+preprocess = transforms.Compose(
+    [
+        transforms.Resize((64, 64)),  # Resize the image to match training input size
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize the image
+    ]
+)
+
+# Load and preprocess the image
+image = Image.open(image_path)
+image = preprocess(image)
+image = image.unsqueeze(0)  # Add a batch dimension
 
 # Make predictions
 with torch.no_grad():
-    output = model(input_image)
+    output = model(image)
+    _, predicted_class = torch.max(output, 1)
 
-# Assuming this is a classification task, get the predicted class index
-predicted_class = output.max(1)[1]
-
-# The variable 'predicted_class' contains the predicted class index
-print("Predicted class:", predicted_class.item())
+# Print the predicted class
+print(f"Predicted class = {predicted_class.item()}")
