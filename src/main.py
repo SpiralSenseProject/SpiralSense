@@ -7,10 +7,12 @@ from torchvision.transforms import transforms
 from torch.utils.data import DataLoader, random_split, Dataset
 from PIL import Image
 from torchvision.datasets import ImageFolder
+from models import *
+
 # Constants
 RANDOM_SEED = 123
 BATCH_SIZE = 64
-NUM_EPOCHS = 50
+NUM_EPOCHS = 100
 LEARNING_RATE = 0.001
 STEP_SIZE = 10
 GAMMA = 0.5
@@ -27,8 +29,24 @@ preprocess = transforms.Compose([
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize
 ])
 
+augmentation = transforms.Compose([
+    transforms.Resize((64, 64)),  # Resize images to 64x64
+    transforms.RandomHorizontalFlip(p=0.5),  # Random horizontal flip
+    transforms.RandomRotation(degrees=45),  # Random rotation
+    transforms.RandomVerticalFlip(p=0.5),  # Random vertical flip
+    transforms.RandomGrayscale(p=0.1),  # Random grayscale
+    transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5, hue=0.5),  # Random color jitter
+    transforms.ToTensor(),  # Convert to tensor
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Normalize
+])
+
 # Load the dataset using ImageFolder
-dataset = ImageFolder(root=data_dir, transform=preprocess)
+original_dataset = ImageFolder(root=data_dir, transform=preprocess)
+augmented_dataset = ImageFolder(root=data_dir, transform=augmentation)
+dataset = original_dataset + augmented_dataset
+
+print(dataset.datasets)
+print("Length of dataset: ", len(dataset))
 
 # Custom dataset class
 class CustomDataset(Dataset):
@@ -51,159 +69,14 @@ train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 train_loader = DataLoader(CustomDataset(train_dataset), batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 valid_loader = DataLoader(CustomDataset(val_dataset), batch_size=BATCH_SIZE, num_workers=0)
 
-#VGG16 model
-class VGG16(torch.nn.Module):
 
-        def __init__(self, num_classes):
-            super().__init__()
-            
-            self.block_1 = torch.nn.Sequential(
-                    torch.nn.Conv2d(in_channels=3,
-                                    out_channels=64,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),
-                    torch.nn.Conv2d(in_channels=64,
-                                    out_channels=64,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),
-                    torch.nn.MaxPool2d(kernel_size=(2, 2),
-                                    stride=(2, 2))
-            )
-            
-            self.block_2 = torch.nn.Sequential(
-                    torch.nn.Conv2d(in_channels=64,
-                                    out_channels=128,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),
-                    torch.nn.Conv2d(in_channels=128,
-                                    out_channels=128,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),
-                    torch.nn.MaxPool2d(kernel_size=(2, 2),
-                                    stride=(2, 2))
-            )
-            
-            self.block_3 = torch.nn.Sequential(        
-                    torch.nn.Conv2d(in_channels=128,
-                                    out_channels=256,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),
-                    torch.nn.Conv2d(in_channels=256,
-                                    out_channels=256,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),        
-                    torch.nn.Conv2d(in_channels=256,
-                                    out_channels=256,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),
-                    torch.nn.MaxPool2d(kernel_size=(2, 2),
-                                    stride=(2, 2))
-            )
-            
-            
-            self.block_4 = torch.nn.Sequential(   
-                    torch.nn.Conv2d(in_channels=256,
-                                    out_channels=512,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),        
-                    torch.nn.Conv2d(in_channels=512,
-                                    out_channels=512,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),        
-                    torch.nn.Conv2d(in_channels=512,
-                                    out_channels=512,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),            
-                    torch.nn.MaxPool2d(kernel_size=(2, 2),
-                                    stride=(2, 2))
-            )
-            
-            self.block_5 = torch.nn.Sequential(
-                    torch.nn.Conv2d(in_channels=512,
-                                    out_channels=512,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),            
-                    torch.nn.Conv2d(in_channels=512,
-                                    out_channels=512,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),            
-                    torch.nn.Conv2d(in_channels=512,
-                                    out_channels=512,
-                                    kernel_size=(3, 3),
-                                    stride=(1, 1),
-                                    padding=1),
-                    torch.nn.ReLU(),    
-                    torch.nn.MaxPool2d(kernel_size=(2, 2),
-                                    stride=(2, 2))             
-            )
-                
-            height, width = 3, 3 
-            self.classifier = torch.nn.Sequential(
-                torch.nn.Linear(512*height*width, 4096),
-                torch.nn.ReLU(True),
-                torch.nn.Dropout(p=0.5),
-                torch.nn.Linear(4096, 4096),
-                torch.nn.ReLU(True),
-                torch.nn.Dropout(p=0.5),
-                torch.nn.Linear(4096, num_classes),
-            )
-                
-            for m in self.modules():
-                if isinstance(m, torch.torch.nn.Conv2d) or isinstance(m, torch.torch.nn.Linear):
-                    torch.nn.init.kaiming_uniform_(m.weight, mode='fan_in', nonlinearity='relu')
-                    if m.bias is not None:
-                        m.bias.detach().zero_()
-                        
-            self.avgpool = torch.nn.AdaptiveAvgPool2d((height, width))
-            
-            
-        def forward(self, x):
-
-            x = self.block_1(x)
-            x = self.block_2(x)
-            x = self.block_3(x)
-            x = self.block_4(x)
-            x = self.block_5(x)
-            x = self.avgpool(x)
-            x = x.view(x.size(0), -1) # flatten
-            
-            logits = self.classifier(x)
-            #probas = F.softmax(logits, dim=1)
-
-            return logits     
-
-        
 # Initialize model, criterion, optimizer, and scheduler
-model = VGG16(num_classes=5) 
+model = VGG16(num_classes=3)
 model = model.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum=0.8, weight_decay=0.001)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
-print(dataset.classes)
+print(dataset.datasets)
 
 # Training loop
 for epoch in range(NUM_EPOCHS):
