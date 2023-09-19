@@ -2,18 +2,17 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision
 from torchvision.transforms import transforms
 from torch.utils.data import DataLoader, random_split, Dataset
-from PIL import Image
 from torchvision.datasets import ImageFolder
+import matplotlib.pyplot as plt
 from models import *
 
 # Constants
 RANDOM_SEED = 123
 BATCH_SIZE = 32
-NUM_EPOCHS = 100
-LEARNING_RATE = 0.001
+NUM_EPOCHS = 50
+LEARNING_RATE = 0.0001
 STEP_SIZE = 10
 GAMMA = 0.5
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -45,7 +44,6 @@ original_dataset = ImageFolder(root=data_dir, transform=preprocess)
 augmented_dataset = ImageFolder(root=data_dir, transform=augmentation)
 dataset = original_dataset + augmented_dataset
 
-print(dataset.datasets)
 print("Length of dataset: ", len(dataset))
 
 # Custom dataset class
@@ -70,17 +68,21 @@ train_loader = DataLoader(CustomDataset(train_dataset), batch_size=BATCH_SIZE, s
 valid_loader = DataLoader(CustomDataset(val_dataset), batch_size=BATCH_SIZE, num_workers=0)
 
 # Initialize model, criterion, optimizer, and scheduler
-# model = ResNet50(num_classes=3)
 model = resnet50(pretrained=False, num_classes=5)
 model = model.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum=0.8, weight_decay=0.001)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
-print(dataset.datasets)
+
+# Lists to store training and validation loss history
+TRAIN_LOSS_HIST = []
+VAL_LOSS_HIST = []
 
 # Training loop
 for epoch in range(NUM_EPOCHS):
+    model.train(True)  # Set model to training mode
     running_loss = 0.0
+    
     for i, (inputs, labels) in enumerate(train_loader, 0):
         inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
         optimizer.zero_grad()
@@ -93,30 +95,50 @@ for epoch in range(NUM_EPOCHS):
         if (i + 1) % NUM_PRINT == 0:
             print('[Epoch %d, Batch %d] Loss: %.6f' % (epoch + 1, i + 1, running_loss / NUM_PRINT))
             running_loss = 0.0
-
-    # Print average loss for the epoch
-    avg_loss = running_loss / len(train_loader)
-    print('[Epoch %d] Average Loss: %.6f' % (epoch + 1, avg_loss))
-
+    
+    # Calculate the average training loss for the epoch
+    avg_train_loss = running_loss / len(train_loader)
+    TRAIN_LOSS_HIST.append(loss.item())
+    
+    # Print average training loss for the epoch
+    print('[Epoch %d] Average Training Loss: %.6f' % (epoch + 1, avg_train_loss))
+    
+    # Learning rate scheduling
     lr_1 = optimizer.param_groups[0]['lr']
     print("Learning Rate: {:.15f}".format(lr_1))
     scheduler.step()
 
-# Validation loop
-val_loss = 0.0
-model.eval()  # Set model to evaluation mode
-with torch.no_grad():
-    for data, targets in valid_loader:
-        data, targets = data.to(DEVICE), targets.to(DEVICE)
-        outputs = model(data)
-        loss = criterion(outputs, targets)
-        val_loss += loss.item()
+    # Validation loop
+    model.eval()  # Set model to evaluation mode
+    val_loss = 0.0
+    
+    with torch.no_grad():
+        for inputs, labels in valid_loader:
+            inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            val_loss += loss.item()
+    
+    # Calculate the average validation loss for the epoch
+    avg_val_loss = val_loss / len(valid_loader)
+    VAL_LOSS_HIST.append(loss.item())
 
-# Average validation loss
-val_loss /= len(valid_loader)
-print('Average Validation Loss: {:.6f}'.format(val_loss))
+    # Print average validation loss for the epoch
+    print('Average Validation Loss: %.6f' % (avg_val_loss))
+
+# End of training loop
 
 # Save the model
 model_save_path = 'model.pth'
 torch.save(model.state_dict(), model_save_path)
 print('Model saved at', model_save_path)
+
+# Generate and display the loss plot
+print('Generating loss plot...')
+plt.plot(range(1, NUM_EPOCHS + 1), TRAIN_LOSS_HIST, label='Train Loss')
+plt.plot(range(1, NUM_EPOCHS + 1), VAL_LOSS_HIST, label='Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.savefig('loss_plot.png')
+plt.show()
