@@ -11,7 +11,7 @@ from models import *
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 NUM_EPOCHS = 100
 LEARNING_RATE = 0.001
 STEP_SIZE = 10
@@ -20,7 +20,7 @@ DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 NUM_PRINT = 100
 
 # Load and preprocess the data
-data_dir = r"17flowers/jpg"
+data_dir = r"data/train/Task 1"
 
 # Define transformation for preprocessing
 preprocess = transforms.Compose([
@@ -69,9 +69,9 @@ train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 train_loader = DataLoader(CustomDataset(train_dataset), batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 valid_loader = DataLoader(CustomDataset(val_dataset), batch_size=BATCH_SIZE, num_workers=0)
 
-
 # Initialize model, criterion, optimizer, and scheduler
-model = VGG16(num_classes=3)
+# model = ResNet50(num_classes=3)
+model = resnet50(pretrained=False, num_classes=5)
 model = model.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE, momentum=0.8, weight_decay=0.001)

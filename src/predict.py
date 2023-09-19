@@ -9,10 +9,10 @@ from models import *
 model_checkpoint_path = "model.pth"
 
 # Define the path to the image you want to classify
-image_path = r"17flowers/test/1/image_0240.jpg"
+image_path = r"data/test/Task 1/Parkinson Disease/02.png"
 
 RANDOM_SEED = 123
-BATCH_SIZE = 64
+BATCH_SIZE = 32
 NUM_EPOCHS = 200
 LEARNING_RATE = 0.001
 STEP_SIZE = 10
@@ -21,7 +21,8 @@ DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 NUM_PRINT = 100
 
 
-model = VGG16(num_classes=3)
+# model = ResNet50(num_classes=3)
+model = resnet50(pretrained=False, num_classes=5)
 model.load_state_dict(torch.load(model_checkpoint_path))
 model.eval()
 model=model.to(DEVICE)
@@ -47,8 +48,9 @@ with torch.no_grad():
 # Print the predicted class
 print(f"Predicted class = {predicted_class.item()}")
 
-class_labels = ["Daaffodil", "LilyValley", "Snowdrop"]
-
+# Define the class labels
+class_labels = ["Cerebral Palsy", "Dystonia", "Essential Tremor", "Huntington's Disease", "Parkinson Disease"]
+                
 def predict_image(image_path, model, transform, class_labels):
     image = Image.open(image_path)
     image = transform(image).unsqueeze(0)
