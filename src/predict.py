@@ -2,6 +2,7 @@ import os
 import torch
 import torch.nn as nn
 from torchvision import transforms
+from torchvision.io import ImageReadMode
 from PIL import Image
 from models import *
 
@@ -9,20 +10,18 @@ from models import *
 model_checkpoint_path = "model.pth"
 
 # Define the path to the image you want to classify
-image_path = r"data/test/Task 1/Parkinson Disease/02.png"
+image_path = r"data\train\Task 1\Dystonia\09.png"
 
-RANDOM_SEED = 123
-BATCH_SIZE = 32
-NUM_EPOCHS = 200
-LEARNING_RATE = 0.001
-STEP_SIZE = 10
-GAMMA = 0.5
 DEVICE = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-NUM_PRINT = 100
+NUM_CLASSES = 3
 
+
+# Create a parameter for the number of classes to be entered by user
+def __init__(self, num_classes):
+    
 
 # model = ResNet50(num_classes=3)
-model = resnet50(pretrained=False, num_classes=5)
+model = resnet18(pretrained=False, num_classes=NUM_CLASSES)
 model.load_state_dict(torch.load(model_checkpoint_path))
 model.eval()
 model=model.to(DEVICE)
@@ -30,6 +29,7 @@ model=model.to(DEVICE)
 preprocess = transforms.Compose(
     [
         transforms.Resize((64, 64)),  # Resize the image to match training input size
+        transforms.Grayscale(num_output_channels=3),  # Convert the image to grayscale
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize the image
     ]
@@ -49,7 +49,7 @@ with torch.no_grad():
 print(f"Predicted class = {predicted_class.item()}")
 
 # Define the class labels
-class_labels = ["Cerebral Palsy", "Dystonia", "Essential Tremor", "Huntington's Disease", "Parkinson Disease"]
+class_labels = ['Dystonia', 'Essential Tremor', 'Parkinson Disease']
                 
 def predict_image(image_path, model, transform, class_labels):
     image = Image.open(image_path)
