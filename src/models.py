@@ -4,6 +4,7 @@
 
 import torch
 from torchvision.models import resnet50
+from torchvision.models import resnet18
 
 # resnet50
 class Bottleneck(torch.nn.Module):
