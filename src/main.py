@@ -22,7 +22,7 @@ NUM_PRINT = 100
 NUM_CLASSES = 5
 
 # Load and preprocess the data
-data_dir = r"data\train\Task 1"
+data_dir = r"data/train/Task 1"
 
 # Define transformation for preprocessing
 preprocess = transforms.Compose(
