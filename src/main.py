@@ -19,10 +19,10 @@ STEP_SIZE = 10
 GAMMA = 0.5
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
-NUM_CLASSES = 3
+NUM_CLASSES = 5
 
 # Load and preprocess the data
-data_dir = r"test_data/Task 1"
+data_dir = r"data\train\Task 1"
 
 # Define transformation for preprocessing
 preprocess = transforms.Compose(
@@ -135,18 +135,13 @@ for epoch in range(NUM_EPOCHS):
     avg_train_loss = running_loss / len(train_loader)
     AVG_TRAIN_LOSS_HIST.append(avg_train_loss)
 
-    # Calculate the accuracy of training set
-    train_accuracy = correct_train / total_train
-    TRAIN_ACC_HIST.append(train_accuracy)
-    print("Training Accuracy: %.6f" % (train_accuracy))
-
     # Print average training loss for the epoch
     print("[Epoch %d] Average Training Loss: %.6f" % (epoch + 1, avg_train_loss))
 
     # Learning rate scheduling
     lr_1 = optimizer.param_groups[0]["lr"]
     print("Learning Rate: {:.15f}".format(lr_1))
-    scheduler.step(avg_train_loss)
+    scheduler.step(avg_val_loss)
 
     # Validation loop
     model.eval()  # Set model to evaluation mode
@@ -216,7 +211,7 @@ plt.clf()
 plt.plot(range(1, NUM_EPOCHS + 1), train_acc_line, label="Train Accuracy")
 plt.plot(range(1, NUM_EPOCHS + 1), val_acc_line, label="Validation Accuracy")
 plt.xlabel("Epochs")
-plt.ylabel("Loss")
+plt.ylabel("Accuracy")
 plt.legend()
 plt.title("Train Accuracy and Validation Accuracy")
 plt.savefig("accuracy_plot.png")
