@@ -26,8 +26,11 @@ jobs:
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
         run: |
-          echo '$HUGGINGFACE_GIT_CREDENTIALS' > $HOME/.git-credentials
+          echo '${{ secrets.HUGGINGFACE_GIT_CREDENTIALS }}' > $HOME/.git-credentials
+          # git config --global user.email "cycool29@gmail.com"
+          # git config --global user.name "cycool29"
           git lfs install
+          cd $HOME
           git clone https://huggingface.co/spaces/cycool29/HANDETECT $PWD/web
           GIT_LFS_SKIP_SMUDGE=1
           cp -a $GITHUB_WORKSPACE/src/. $PWD/web/
