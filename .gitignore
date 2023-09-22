@@ -3,3 +3,5 @@ model.pth
 loss_plot.png
 accuracy_plot.png
 avg_loss_plot.png
+*/__pycache__/
+test_data/

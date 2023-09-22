@@ -19,10 +19,8 @@ STEP_SIZE = 10
 GAMMA = 0.5
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
-NUM_CLASSES = 5
-
-# Load and preprocess the data
-data_dir = r"data/train/Task 1"
+DATA_DIR = r"data/train/Task 1"
+NUM_CLASSES = len(os.listdir(DATA_DIR))
 
 # Define transformation for preprocessing
 preprocess = transforms.Compose(
@@ -49,8 +47,8 @@ augmentation = transforms.Compose(
 )
 
 # Load the dataset using ImageFolder
-original_dataset = ImageFolder(root=data_dir, transform=preprocess)
-augmented_dataset = ImageFolder(root=data_dir, transform=augmentation)
+original_dataset = ImageFolder(root=DATA_DIR, transform=preprocess)
+augmented_dataset = ImageFolder(root=DATA_DIR, transform=augmentation)
 dataset = original_dataset + augmented_dataset
 
 print("Length of dataset: ", len(dataset))
@@ -128,6 +126,8 @@ for epoch in range(NUM_EPOCHS):
         _, predicted = torch.max(outputs, 1)
         total_train += labels.size(0)
         correct_train += (predicted == labels).sum().item()
+        
+    TRAIN_ACC_HIST.append(correct_train / total_train)
 
     TRAIN_LOSS_HIST.append(loss.item())
 
@@ -141,7 +141,7 @@ for epoch in range(NUM_EPOCHS):
     # Learning rate scheduling
     lr_1 = optimizer.param_groups[0]["lr"]
     print("Learning Rate: {:.15f}".format(lr_1))
-    scheduler.step(avg_val_loss)
+    scheduler.step(avg_train_loss)
 
     # Validation loop
     model.eval()  # Set model to evaluation mode
