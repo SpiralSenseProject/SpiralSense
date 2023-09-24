@@ -5,6 +5,8 @@
 import torch
 from torchvision.models import resnet50
 from torchvision.models import resnet18
+from torchvision.models import squeezenet1_0
+from torchvision.models import vgg16
 
 # resnet50
 class Bottleneck(torch.nn.Module):

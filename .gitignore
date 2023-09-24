@@ -5,3 +5,6 @@ accuracy_plot.png
 avg_loss_plot.png
 */__pycache__/
 test_data/
+*/test.py
+runs/
+data/train/augmented/*

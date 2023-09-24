@@ -5,7 +5,7 @@ from sklearn.metrics import f1_score
 from models import * 
 import pathlib
 from PIL import Image
-from torchmetrics import ConfusionMatrix
+from torchmetrics import ConfusionMatrix, Accuracy
 import matplotlib.pyplot as plt
 
 model_checkpoint_path = "model.pth" 
@@ -23,7 +23,7 @@ print(images)
 true_classs = []
 predicted_labels = []
 
-model = resnet18(pretrained=False, num_classes=NUM_CLASSES)  
+model = vgg16(pretrained=False, num_classes=NUM_CLASSES)  
 model.load_state_dict(torch.load(model_checkpoint_path, map_location=DEVICE)) 
 model.eval()
 model = model.to(DEVICE)
@@ -60,6 +60,8 @@ def predict_image(image_path, model, transform):
             image = image.to(DEVICE)
             output = model(image)
             predicted_class = torch.argmax(output, dim=1).item()
+            # Print the predicted class
+            print("Predicted class:", predicted_class)
             # Append true and predicted labels to their respective lists
             true_classs.append(true_class)
             predicted_labels.append(predicted_class)

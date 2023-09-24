@@ -5,30 +5,30 @@ import torch.optim as optim
 from torchvision.transforms import transforms
 from torch.utils.data import DataLoader, random_split, Dataset
 from torchvision.datasets import ImageFolder
-import matplotlib.pyplot as plt
 from models import *
-from scipy.ndimage import gaussian_filter1d
 from torch.utils.tensorboard import SummaryWriter #print to tensorboard
 from torchvision.utils import make_grid
-
-torch.cuda.empty_cache()
+import optuna
 
 writer = SummaryWriter()
-
 # Constants
 RANDOM_SEED = 123
 BATCH_SIZE = 32
-NUM_EPOCHS = 100
-LEARNING_RATE = 0.001
-STEP_SIZE = 10
-GAMMA = 0.5
+NUM_EPOCHS = 1
+LEARNING_RATE = 0.0001
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
 ORIG_DATA_DIR = r"data/train/raw/Task " + str(TASK)
 AUG_DATA_DIR = r"data/train/augmented/Task " + str(TASK)
-
 NUM_CLASSES = len(os.listdir(ORIG_DATA_DIR))
+VAL_RESIZE_SIZE = 232
+
+# Load and preprocess the data
+data_dir = r"data/train/Task 1"
+
+def resize_for_validation(image):
+    return transforms.Resize((VAL_RESIZE_SIZE, VAL_RESIZE_SIZE))(image)
 
 # Define transformation for preprocessing
 preprocess = transforms.Compose(
@@ -89,6 +89,7 @@ model = model.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 # Adam optimizer
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
 # ReduceLROnPlateau scheduler
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode="min", factor=0.1, patience=10, verbose=True
@@ -102,9 +103,20 @@ AVG_VAL_LOSS_HIST = []
 TRAIN_ACC_HIST = []
 VAL_ACC_HIST = []
 
-# Training loop
-for epoch in range(NUM_EPOCHS):
-    model.train(True)  # Set model to training mode
+def resize_for_validation(image):
+    return transforms.Resize((VAL_RESIZE_SIZE, VAL_RESIZE_SIZE))(image)
+    
+
+def objective(trial):
+    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True)
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
+
+    # Modify the model and optimizer using suggested hyperparameters
+    model = resnet18(pretrained=False, num_classes=NUM_CLASSES).to(DEVICE)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    for epoch in range(NUM_EPOCHS):
+        model.train(True)  
     running_loss = 0.0
     total_train = 0
     correct_train = 0
@@ -128,15 +140,15 @@ for epoch in range(NUM_EPOCHS):
         _, predicted = torch.max(outputs, 1)
         total_train += labels.size(0)
         correct_train += (predicted == labels).sum().item()
-        
-    TRAIN_ACC_HIST.append(correct_train / total_train)
 
     TRAIN_LOSS_HIST.append(loss.item())
-
+    train_accuracy = correct_train / total_train
+    TRAIN_ACC_HIST.append(train_accuracy)
     # Calculate the average training loss for the epoch
     avg_train_loss = running_loss / len(train_loader)
+
     writer.add_scalar('Loss/Train', avg_train_loss, epoch)
-    writer.add_scalar('Accuracy/Train', correct_train / total_train , epoch)
+    writer.add_scalar('Accuracy/Train', train_accuracy, epoch)
     AVG_TRAIN_LOSS_HIST.append(avg_train_loss)
 
     # Print average training loss for the epoch
@@ -175,7 +187,6 @@ for epoch in range(NUM_EPOCHS):
     val_accuracy = correct_val / total_val
     VAL_ACC_HIST.append(val_accuracy)
     print("Validation Accuracy: %.6f" % (val_accuracy))
-    
     writer.add_scalar('Loss/Validation', avg_val_loss, epoch)
     writer.add_scalar('Accuracy/Validation', val_accuracy, epoch)
     # Add sample images to TensorBoard
@@ -183,52 +194,43 @@ for epoch in range(NUM_EPOCHS):
     sample_images = sample_images.to(DEVICE)
     grid_image = make_grid(sample_images, nrow=8, normalize=True)  # Create a grid of images
     writer.add_image('Sample Images', grid_image, global_step=epoch)
+    # Validation loop
+    model.eval()  # Set model to evaluation mode
+    correct_val = 0
+    total_val = 0
 
-# End of training loop
+    with torch.no_grad():
+        for inputs, labels in valid_loader:
+            inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs, 1)
+            total_val += labels.size(0)
+            correct_val += (predicted == labels).sum().item()
 
-# Save the model
-model_save_path = "model.pth"
-torch.save(model.state_dict(), model_save_path)
-print("Model saved at", model_save_path)
+    # suan evaluation score 
+    evaluation_score = correct_val / total_val
 
-print("Generating loss plot...")
-# Make the plot smoother by interpolating the data
-# https://stackoverflow.com/questions/5283649/plot-smooth-line-with-pyplot
-# train_loss_line = gaussian_filter1d(TRAIN_LOSS_HIST, sigma=10)
-# val_loss_line = gaussian_filter1d(VAL_LOSS_HIST, sigma=10)
-# plt.plot(range(1, NUM_EPOCHS + 1), train_loss_line, label='Train Loss')
-# plt.plot(range(1, NUM_EPOCHS + 1), val_loss_line, label='Validation Loss')
-avg_train_loss_line = gaussian_filter1d(AVG_TRAIN_LOSS_HIST, sigma=2)
-avg_val_loss_line = gaussian_filter1d(AVG_VAL_LOSS_HIST, sigma=2)
-train_loss_line = gaussian_filter1d(TRAIN_LOSS_HIST, sigma=2)
-val_loss_line = gaussian_filter1d(VAL_LOSS_HIST, sigma=2)
-train_acc_line = gaussian_filter1d(TRAIN_ACC_HIST, sigma=2)
-val_acc_line = gaussian_filter1d(VAL_ACC_HIST, sigma=2)
-plt.plot(range(1, NUM_EPOCHS + 1), train_loss_line, label="Train Loss")
-plt.plot(range(1, NUM_EPOCHS + 1), val_loss_line, label="Validation Loss")
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
-plt.legend()
-plt.title("Train Loss and Validation Loss")
-plt.savefig("loss_plot.png")
-plt.clf()
-plt.plot(range(1, NUM_EPOCHS + 1), avg_train_loss_line, label="Average Train Loss")
-plt.plot(range(1, NUM_EPOCHS + 1), avg_val_loss_line, label="Average Validation Loss")
-plt.xlabel("Epochs")
-plt.ylabel("Loss")
-plt.legend()
-plt.title("Average Train Loss and Average Validation Loss")
-plt.savefig("avg_loss_plot.png")
-plt.clf()
-plt.plot(range(1, NUM_EPOCHS + 1), train_acc_line, label="Train Accuracy")
-plt.plot(range(1, NUM_EPOCHS + 1), val_acc_line, label="Validation Accuracy")
-plt.xlabel("Epochs")
-plt.ylabel("Accuracy")
-plt.legend()
-plt.title("Train Accuracy and Validation Accuracy")
-plt.savefig("accuracy_plot.png")
+    # Return the evaluation score 
+    return evaluation_score
 
-dummy_input = torch.randn(1, 3, 64, 64).to(DEVICE)  # Adjust input shape accordingly
-writer.add_graph(model, dummy_input)
-# Close TensorBoard writer
-writer.close()
+
+if __name__ == "__main__":
+    study = optuna.create_study(direction="maximize")
+    study.optimize(objective, n_trials=300, timeout=800)
+
+    # Print statistics
+    print("Number of finished trials: ", len(study.trials))
+    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
+    print("Number of pruned trials: ", len(pruned_trials))
+    complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    print("Number of complete trials: ", len(complete_trials))
+
+    # Print best trial
+    trial = study.best_trial
+    print("Best trial:")
+    print("  Value: ", trial.value)
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print(f"    {key}: {value}")
+
+
