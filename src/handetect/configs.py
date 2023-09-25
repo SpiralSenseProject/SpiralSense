@@ -16,7 +16,7 @@ NUM_PRINT = 100
 TASK = 1
 ORIG_DATA_DIR = r"data/train/raw/Task " + str(TASK)
 AUG_DATA_DIR = r"data/train/augmented/Task " + str(TASK)
-NUM_CLASSES = len(os.listdir(ORIG_DATA_DIR))
+NUM_CLASSES = 6
 MODEL_SAVE_PATH = "output/checkpoints/model.pth"
 MODEL = shufflenet_v2_x0_5(num_classes=NUM_CLASSES)
 
