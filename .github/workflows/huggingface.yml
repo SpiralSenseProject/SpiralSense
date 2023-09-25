@@ -34,6 +34,7 @@ jobs:
           git clone ${{ secrets.HUGGINGFACE_GIT_CREDENTIALS }} $HOME/web
           GIT_LFS_SKIP_SMUDGE=1
           cp -a $GITHUB_WORKSPACE/src/. $HOME/web/
+          cp $GITHUB_WORKSPACE/requirements.txt $HOME/web/
           cd $HOME/web
           git add .
           git commit -m "Update"
