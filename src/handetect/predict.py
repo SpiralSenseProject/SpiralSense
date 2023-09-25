@@ -25,7 +25,7 @@ preprocess = transforms.Compose(
 )
 
 # Load your model (change this according to your model definition)
-model = vgg16(pretrained=False, num_classes=NUM_CLASSES)
+model = squeezenet1_0(pretrained=False, num_classes=NUM_CLASSES)
 model.load_state_dict(
     torch.load(model_checkpoint_path, map_location=DEVICE)
 )  # Load the model on the same device

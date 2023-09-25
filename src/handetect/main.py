@@ -11,15 +11,17 @@ from scipy.ndimage import gaussian_filter1d
 from torch.utils.tensorboard import SummaryWriter #print to tensorboard
 from torchvision.utils import make_grid
 
-torch.cuda.empty_cache()
+# torch.cuda.empty_cache()
+# os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:1024" 
 
-writer = SummaryWriter()
+writer = SummaryWriter(log_dir='runs/Task1')
+
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 NUM_EPOCHS = 100
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.030215994618918267
 STEP_SIZE = 10
 GAMMA = 0.5
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -54,8 +56,6 @@ print("Classes: ", original_dataset.classes)
 print("Length of original dataset: ", len(original_dataset))
 print("Length of augmented dataset: ", len(augmented_dataset))
 print("Length of total dataset: ", len(dataset))
-print("Classes: ", original_dataset.classes)
-
 
 # Custom dataset class
 class CustomDataset(Dataset):
@@ -84,15 +84,13 @@ valid_loader = DataLoader(
 )
 
 # Initialize model, criterion, optimizer, and scheduler
-model = vgg16(pretrained=False, num_classes=NUM_CLASSES)
+model = mobilenet_v3_small(num_classes=NUM_CLASSES)
 model = model.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 # Adam optimizer
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-# ReduceLROnPlateau scheduler
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-    optimizer, mode="min", factor=0.1, patience=10, verbose=True
-)
+# StepLR scheduler
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
 # Lists to store training and validation loss history
 TRAIN_LOSS_HIST = []
@@ -145,7 +143,7 @@ for epoch in range(NUM_EPOCHS):
     # Learning rate scheduling
     lr_1 = optimizer.param_groups[0]["lr"]
     print("Learning Rate: {:.15f}".format(lr_1))
-    scheduler.step(avg_train_loss)
+    scheduler.step()
 
     # Validation loop
     model.eval()  # Set model to evaluation mode

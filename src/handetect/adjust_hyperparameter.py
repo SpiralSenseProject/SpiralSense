@@ -24,9 +24,6 @@ AUG_DATA_DIR = r"data/train/augmented/Task " + str(TASK)
 NUM_CLASSES = len(os.listdir(ORIG_DATA_DIR))
 VAL_RESIZE_SIZE = 232
 
-# Load and preprocess the data
-data_dir = r"data/train/Task 1"
-
 def resize_for_validation(image):
     return transforms.Resize((VAL_RESIZE_SIZE, VAL_RESIZE_SIZE))(image)
 
@@ -84,7 +81,7 @@ valid_loader = DataLoader(
 )
 
 # Initialize model, criterion, optimizer, and scheduler
-model = vgg16(pretrained=False, num_classes=NUM_CLASSES)
+model = mobilenet_v2(pretrained=False, num_classes=NUM_CLASSES)
 model = model.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
 # Adam optimizer
@@ -112,7 +109,7 @@ def objective(trial):
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
 
     # Modify the model and optimizer using suggested hyperparameters
-    model = resnet18(pretrained=False, num_classes=NUM_CLASSES).to(DEVICE)
+    model = mobilenet_v2(pretrained=False, num_classes=NUM_CLASSES).to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     for epoch in range(NUM_EPOCHS):

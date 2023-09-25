@@ -23,7 +23,7 @@ print(images)
 true_classs = []
 predicted_labels = []
 
-model = vgg16(pretrained=False, num_classes=NUM_CLASSES)  
+model = mobilenet_v2(pretrained=False, num_classes=NUM_CLASSES)  
 model.load_state_dict(torch.load(model_checkpoint_path, map_location=DEVICE)) 
 model.eval()
 model = model.to(DEVICE)
