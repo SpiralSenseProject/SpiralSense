@@ -6,36 +6,20 @@ from PIL import Image
 from handetect.models import *
 from torchmetrics import ConfusionMatrix
 import matplotlib.pyplot as plt
+from configs import *
 
-# Define the path to your model checkpoint
-model_checkpoint_path = "model.pth"
-
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-NUM_CLASSES = 6
-
-# Define transformation for preprocessing the input image
-preprocess = transforms.Compose(
-    [
-        transforms.Resize((64, 64)),  # Resize the image to match training input size
-        transforms.Grayscale(num_output_channels=3),  # Convert the image to grayscale
-        transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),  # Normalize the image
-    ]
-)
 
 # Load your model (change this according to your model definition)
-model = mobilenet_v3_small(pretrained=False, num_classes=NUM_CLASSES)
-model.load_state_dict(
-    torch.load(model_checkpoint_path, map_location=DEVICE)
+MODEL.load_state_dict(
+    torch.load(MODEL_SAVE_PATH, map_location=DEVICE)
 )  # Load the model on the same device
-model.eval()
-model = model.to(DEVICE)
-model.eval()
+MODEL.eval()
+MODEL = MODEL.to(DEVICE)
+MODEL.eval()
 torch.set_grad_enabled(False)
 
 
-def predict_image(image_path, model=model, transform=preprocess):
+def predict_image(image_path, model=MODEL, transform=preprocess):
     # Define images variable to recursively list all the data file in the image_path
     classes = ['Cerebral Palsy', 'Dystonia', 'Essential Tremor', 'Healthy', 'Huntington Disease', 'Parkinson Disease']
 
