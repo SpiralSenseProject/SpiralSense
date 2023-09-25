@@ -2,7 +2,7 @@ import os
 import torch
 from torchvision import transforms
 from torch.utils.data import Dataset
-from models import *
+from handetect.models import *
 
 # Constants
 RANDOM_SEED = 123

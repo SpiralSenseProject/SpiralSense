@@ -5,7 +5,7 @@ import torch.optim as optim
 from torchvision.transforms import transforms
 from torch.utils.data import DataLoader, random_split, Dataset
 from torchvision.datasets import ImageFolder
-from models import *
+from handetect.models import *
 from torch.utils.tensorboard import SummaryWriter #print to tensorboard
 from torchvision.utils import make_grid
 import optuna

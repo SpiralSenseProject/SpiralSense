@@ -2,7 +2,7 @@ import os
 import torch
 from torchvision.transforms import transforms
 from sklearn.metrics import f1_score
-from models import * 
+from handetect.models import * 
 import pathlib
 from PIL import Image
 from torchmetrics import ConfusionMatrix
