@@ -5,9 +5,9 @@ from sklearn.metrics import f1_score
 from models import * 
 import pathlib
 from PIL import Image
-from torchmetrics import ConfusionMatrix, Accuracy
+from torchmetrics import ConfusionMatrix
 import matplotlib.pyplot as plt
-from configs import *
+from handetect.configs import *
 
 image_path = "data/test/Task 1/" 
 
@@ -23,10 +23,9 @@ print(images)
 true_classs = []
 predicted_labels = []
 
-model = mobilenet_v3_small(pretrained=False, num_classes=NUM_CLASSES)  
-model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE)) 
-model.eval()
-model = model.to(DEVICE)
+MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE)) 
+MODEL.eval()
+MODEL = MODEL.to(DEVICE)
 
 
 # Define transformation for preprocessing
@@ -77,7 +76,7 @@ def predict_image(image_path, model, transform):
     print("Weighted F1 Score:", f1)
 
 # Call predict_image function
-predict_image(image_path, model, preprocess)
+predict_image(image_path, MODEL, preprocess)
 
 # Convert the lists to tensors
 predicted_labels_tensor = torch.tensor(predicted_labels)

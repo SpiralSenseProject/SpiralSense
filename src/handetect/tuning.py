@@ -9,7 +9,7 @@ from models import *
 from torch.utils.tensorboard import SummaryWriter #print to tensorboard
 from torchvision.utils import make_grid
 import optuna
-from configs import *
+from handetect.configs import *
 
 writer = SummaryWriter()
 

@@ -11,7 +11,7 @@ from scipy.ndimage import gaussian_filter1d
 from torch.utils.tensorboard import SummaryWriter  # print to tensorboard
 from torchvision.utils import make_grid
 import pandas as pd
-from configs import *
+from handetect.configs import *
 import data_loader
 
 # torch.cuda.empty_cache()

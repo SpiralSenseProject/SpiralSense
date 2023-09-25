@@ -6,7 +6,7 @@ from PIL import Image
 from handetect.models import *
 from torchmetrics import ConfusionMatrix
 import matplotlib.pyplot as plt
-from configs import *
+from handetect.configs import *
 
 
 # Load your model (change this according to your model definition)
