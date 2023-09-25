@@ -51,7 +51,6 @@ print("Classes: ", original_dataset.classes)
 print("Length of original dataset: ", len(original_dataset))
 print("Length of augmented dataset: ", len(augmented_dataset))
 print("Length of total dataset: ", len(dataset))
-print("Classes: ", original_dataset.classes)
 
 
 # Custom dataset class

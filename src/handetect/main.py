@@ -19,9 +19,9 @@ writer = SummaryWriter(log_dir='runs/Task1')
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 16
+BATCH_SIZE = 64
 NUM_EPOCHS = 100
-LEARNING_RATE = 0.030215994618918267
+LEARNING_RATE = 0.02750299610194638
 STEP_SIZE = 10
 GAMMA = 0.5
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
