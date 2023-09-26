@@ -3,14 +3,16 @@ from torchvision.datasets import ImageFolder
 from torch.utils.data import random_split, DataLoader, Dataset
 
 
-def load_data(original_dir, augmented_dir, preprocess):
+def load_data(raw_dir, augmented_dir, external_dir, preprocess):
     # Load the dataset using ImageFolder
-    original_dataset = ImageFolder(root=original_dir, transform=preprocess)
+    raw_dataset = ImageFolder(root=raw_dir, transform=preprocess)
+    external_dataset = ImageFolder(root=external_dir, transform=preprocess)
     augmented_dataset = ImageFolder(root=augmented_dir, transform=preprocess)
-    dataset = original_dataset + augmented_dataset
+    dataset = raw_dataset + external_dataset + augmented_dataset
 
-    print("Classes: ", *original_dataset.classes, sep = ' ')
-    print("Length of original dataset: ", len(original_dataset))
+    print("Classes: ", *raw_dataset.classes, sep = ', ')
+    print("Length of raw dataset: ", len(raw_dataset))
+    print("Length of external dataset: ", len(external_dataset))
     print("Length of augmented dataset: ", len(augmented_dataset))
     print("Length of total dataset: ", len(dataset))
 

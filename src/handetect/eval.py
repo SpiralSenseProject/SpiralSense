@@ -2,59 +2,54 @@ import os
 import torch
 from torchvision.transforms import transforms
 from sklearn.metrics import f1_score
-from handetect.models import * 
 import pathlib
 from PIL import Image
 from torchmetrics import ConfusionMatrix
 import matplotlib.pyplot as plt
-from handetect.configs import *
+from configs import *
+from data_loader import load_data  # Import the load_data function
 
-image_path = "data/test/Task 1/" 
+image_path = "data/test/Task 1/"
 
-# constants
+# Constants
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-NUM_CLASSES = 6 
 
-# load the model
-images = list(pathlib.Path(image_path).rglob("*.png"))
-classes = os.listdir(image_path)
-print(images)
-
-true_classs = []
-predicted_labels = []
-
-MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE)) 
-MODEL.eval()
+# Load the model
 MODEL = MODEL.to(DEVICE)
+MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+MODEL.eval()
 
+# Get class labels from the dataset
+class_labels = os.listdir(image_path)
 
 # Define transformation for preprocessing
 preprocess = transforms.Compose(
     [
         transforms.Resize((64, 64)),  # Resize images to 64x64
-        transforms.Grayscale(num_output_channels=3),  # Convert to grayscale
         transforms.ToTensor(),  # Convert to tensor
         transforms.Normalize((0.5,), (0.5,)),  # Normalize (for grayscale)
     ]
 )
 
-# evaluate the model
-all_predictions = []
-true_labels = []
-
 def predict_image(image_path, model, transform):
     model.eval()
     correct_predictions = 0
     total_predictions = len(images)
-    
+
+    # Get a list of image files
+    images = list(pathlib.Path(image_path).rglob("*.png"))
+
+    true_classes = []
+    predicted_labels = []
+
     with torch.no_grad():
-        for i in images:
+        for image_file in images:
             print('---------------------------')
             # Check the true label of the image by checking the sequence of the folder in Task 1
-            true_class = classes.index(i.parts[-2])
-            print("Image path:", i)
+            true_class = class_labels.index(image_file.parts[-2])
+            print("Image path:", image_file)
             print("True class:", true_class)
-            image = Image.open(i)
+            image = Image.open(image_file).convert('RGB')
             image = transform(image).unsqueeze(0)
             image = image.to(DEVICE)
             output = model(image)
@@ -62,29 +57,30 @@ def predict_image(image_path, model, transform):
             # Print the predicted class
             print("Predicted class:", predicted_class)
             # Append true and predicted labels to their respective lists
-            true_classs.append(true_class)
+            true_classes.append(true_class)
             predicted_labels.append(predicted_class)
-            
+
             # Check if the prediction is correct
             if predicted_class == true_class:
                 correct_predictions += 1
 
-    # Calculate accuracy and f1 socre
+    # Calculate accuracy and f1 score
     accuracy = correct_predictions / total_predictions
     print("Accuracy:", accuracy)
-    f1 = f1_score(true_classs, predicted_labels, average='weighted')
+    f1 = f1_score(true_classes, predicted_labels, average='weighted')
     print("Weighted F1 Score:", f1)
+
+    # Convert the lists to tensors
+    predicted_labels_tensor = torch.tensor(predicted_labels)
+    true_classes_tensor = torch.tensor(true_classes)
+
+    # Create a confusion matrix
+    conf_matrix = ConfusionMatrix(num_classes=NUM_CLASSES, task='multiclass')
+    conf_matrix.update(predicted_labels_tensor, true_classes_tensor)
+
+    # Plot the confusion matrix
+    conf_matrix.plot()
+    plt.show()
 
 # Call predict_image function
 predict_image(image_path, MODEL, preprocess)
-
-# Convert the lists to tensors
-predicted_labels_tensor = torch.tensor(predicted_labels)
-true_classs_tensor = torch.tensor(true_classs)
-
-conf_matrix = ConfusionMatrix(num_classes=NUM_CLASSES, task='multiclass')
-conf_matrix.update(predicted_labels_tensor, true_classs_tensor)
-
-# Plot confusion matrix
-conf_matrix.plot()
-plt.show()

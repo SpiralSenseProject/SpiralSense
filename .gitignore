@@ -3,8 +3,13 @@ model.pth
 loss_plot.png
 accuracy_plot.png
 avg_loss_plot.png
-*/__pycache__/
+src/handetect/__pycache__/
 test_data/
 */test.py
-runs/
+output/checkpoints/*.pth
+output/logs/*
+output/tensorboard/*
 data/train/augmented/*
+temp/
+.venv/
+```

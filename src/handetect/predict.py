@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 from torchvision import transforms
 from PIL import Image
-from handetect.models import *
+from models import *
 from torchmetrics import ConfusionMatrix
 import matplotlib.pyplot as plt
-from handetect.configs import *
+from configs import *
 
 
 # Load your model (change this according to your model definition)
@@ -20,8 +20,9 @@ torch.set_grad_enabled(False)
 
 
 def predict_image(image_path, model=MODEL, transform=preprocess):
-    # Define images variable to recursively list all the data file in the image_path
-    classes = ['Cerebral Palsy', 'Dystonia', 'Essential Tremor', 'Healthy', 'Huntington Disease', 'Parkinson Disease']
+    classes = [
+        'Cerebral Palsy', 'Dystonia', 'Essential Tremor', 'Healthy', 'Huntington Disease', 'Parkinson Disease'
+    ]
 
     print("---------------------------")
     print("Image path:", image_path)
@@ -30,7 +31,7 @@ def predict_image(image_path, model=MODEL, transform=preprocess):
     image = image.to(DEVICE)
     output = model(image)
 
-    # softmax algorithm
+    # Softmax algorithm
     probabilities = torch.softmax(output, dim=1)[0] * 100
 
     # Sort the classes by probabilities in descending order
@@ -53,12 +54,4 @@ def predict_image(image_path, model=MODEL, transform=preprocess):
     print("Predicted label:", predicted_class)
     print("---------------------------")
 
-    return sorted_classes
-
-
-# # Call the predict_image function
-# predicted_label, sorted_probabilities = predict_image(image_path, model, preprocess)
-
-# # Access probabilities for each class in sorted order
-# for class_label, class_prob in sorted_probabilities:
-#     print(f"{class_label}: {class_prob}%")
+    return predicted_label, sorted_classes

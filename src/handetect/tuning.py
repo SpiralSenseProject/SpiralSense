@@ -2,67 +2,22 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision.transforms import transforms
-from torch.utils.data import DataLoader, random_split, Dataset
-from torchvision.datasets import ImageFolder
-from handetect.models import *
-from torch.utils.tensorboard import SummaryWriter #print to tensorboard
+from models import *  # Import your model here
+from torch.utils.tensorboard import SummaryWriter
 from torchvision.utils import make_grid
 import optuna
-from handetect.configs import *
+from configs import *
+import data_loader
 
-writer = SummaryWriter()
-
-# Error if the classes in the original dataset and augmented dataset are not the same
-assert (
-    os.listdir(ORIG_DATA_DIR) == os.listdir(AUG_DATA_DIR)
-), "Classes in original dataset and augmented dataset are not the same"
-
-
-# Load the dataset using ImageFolder
-original_dataset = ImageFolder(root=ORIG_DATA_DIR, transform=preprocess)
-augmented_dataset = ImageFolder(root=AUG_DATA_DIR, transform=preprocess)
-dataset = original_dataset + augmented_dataset
-
-print("Classes: ", original_dataset.classes)
-print("Length of original dataset: ", len(original_dataset))
-print("Length of augmented dataset: ", len(augmented_dataset))
-print("Length of total dataset: ", len(dataset))
-
-
-# Custom dataset class
-class CustomDataset(Dataset):
-    def __init__(self, dataset):
-        self.data = dataset
-
-    def __len__(self):
-        return len(self.data)
-
-    def __getitem__(self, idx):
-        img, label = self.data[idx]
-        return img, label
-
-
-# Split the dataset into train and validation sets
-train_size = int(0.8 * len(dataset))
-val_size = len(dataset) - train_size
-train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
-
-# Create data loaders for the custom dataset
-train_loader = DataLoader(
-    CustomDataset(train_dataset), batch_size=BATCH_SIZE, shuffle=True, num_workers=0
-)
-valid_loader = DataLoader(
-    CustomDataset(val_dataset), batch_size=BATCH_SIZE, num_workers=0
+# Data loader
+train_loader, valid_loader = data_loader.load_data(
+    RAW_DATA_DIR, AUG_DATA_DIR, EXTERNAL_DATA_DIR, preprocess
 )
 
 # Initialize model, criterion, optimizer, and scheduler
 MODEL = MODEL.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
-# Adam optimizer
 optimizer = optim.Adam(MODEL.parameters(), lr=LEARNING_RATE)
-
-# ReduceLROnPlateau scheduler
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(
     optimizer, mode="min", factor=0.1, patience=10, verbose=True
 )
@@ -70,20 +25,23 @@ scheduler = optim.lr_scheduler.ReduceLROnPlateau(
 # Lists to store training and validation loss history
 TRAIN_LOSS_HIST = []
 VAL_LOSS_HIST = []
-AVG_TRAIN_LOSS_HIST = []
-AVG_VAL_LOSS_HIST = []
 TRAIN_ACC_HIST = []
 VAL_ACC_HIST = []
+AVG_TRAIN_LOSS_HIST = []
+AVG_VAL_LOSS_HIST = []
 
-def objective(trial):
-    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-1, log=True)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
+# Create a TensorBoard writer for logging
+writer = SummaryWriter(
+    log_dir="output/tensorboard/tuning",
+)
 
-    # Modify the model and optimizer using suggested hyperparameters
-    optimizer = optim.Adam(MODEL.parameters(), lr=learning_rate)
+# Define early stopping parameters
+early_stopping_patience = 10  # Number of epochs to wait for improvement
+best_val_loss = float('inf')
+no_improvement_count = 0
 
-    for epoch in range(NUM_EPOCHS):
-        MODEL.train(True)  
+def train_epoch(epoch):
+    MODEL.train(True)
     running_loss = 0.0
     total_train = 0
     correct_train = 0
@@ -114,8 +72,8 @@ def objective(trial):
     # Calculate the average training loss for the epoch
     avg_train_loss = running_loss / len(train_loader)
 
-    writer.add_scalar('Loss/Train', avg_train_loss, epoch)
-    writer.add_scalar('Accuracy/Train', train_accuracy, epoch)
+    writer.add_scalar("Loss/Train", avg_train_loss, epoch)
+    writer.add_scalar("Accuracy/Train", train_accuracy, epoch)
     AVG_TRAIN_LOSS_HIST.append(avg_train_loss)
 
     # Print average training loss for the epoch
@@ -126,8 +84,10 @@ def objective(trial):
     print("Learning Rate: {:.15f}".format(lr_1))
     scheduler.step(avg_train_loss)
 
-    # Validation loop
-    MODEL.eval()  # Set model to evaluation mode
+def validate_epoch(epoch):
+    global best_val_loss, no_improvement_count  
+    
+    MODEL.eval()
     val_loss = 0.0
     correct_val = 0
     total_val = 0
@@ -150,54 +110,77 @@ def objective(trial):
     AVG_VAL_LOSS_HIST.append(loss.item())
     print("Average Validation Loss: %.6f" % (avg_val_loss))
 
-    # Calculate the accuracy of validation set
+    # Calculate the accuracy of the validation set
     val_accuracy = correct_val / total_val
     VAL_ACC_HIST.append(val_accuracy)
     print("Validation Accuracy: %.6f" % (val_accuracy))
-    writer.add_scalar('Loss/Validation', avg_val_loss, epoch)
-    writer.add_scalar('Accuracy/Validation', val_accuracy, epoch)
+    writer.add_scalar("Loss/Validation", avg_val_loss, epoch)
+    writer.add_scalar("Accuracy/Validation", val_accuracy, epoch)
+
     # Add sample images to TensorBoard
     sample_images, _ = next(iter(valid_loader))  # Get a batch of sample images
     sample_images = sample_images.to(DEVICE)
-    grid_image = make_grid(sample_images, nrow=8, normalize=True)  # Create a grid of images
-    writer.add_image('Sample Images', grid_image, global_step=epoch)
-    # Validation loop
-    MODEL.eval()  # Set model to evaluation mode
-    correct_val = 0
-    total_val = 0
+    grid_image = make_grid(
+        sample_images, nrow=8, normalize=True
+    )  # Create a grid of images
+    writer.add_image("Sample Images", grid_image, global_step=epoch)
 
-    with torch.no_grad():
-        for inputs, labels in valid_loader:
-            inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
-            outputs = MODEL(inputs)
-            _, predicted = torch.max(outputs, 1)
-            total_val += labels.size(0)
-            correct_val += (predicted == labels).sum().item()
+    # Check for early stopping
+    if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
+        no_improvement_count = 0
+    else:
+        no_improvement_count += 1
 
-    # suan evaluation score 
-    evaluation_score = correct_val / total_val
+    if no_improvement_count >= early_stopping_patience:
+        print(f"Early stopping after {epoch + 1} epochs without improvement.")
+        return True  # Return True to stop training
 
-    # Return the evaluation score 
-    return evaluation_score
+def objective(trial):
+    global best_val_loss, no_improvement_count
+    
+    learning_rate = trial.suggest_float("learning_rate", 1e-5, 1e-1)
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
 
+    # Modify the model and optimizer using suggested hyperparameters
+    optimizer = optim.Adam(MODEL.parameters(), lr=learning_rate)
+
+    for epoch in range(10):
+        train_epoch(epoch)
+        early_stopping = validate_epoch(epoch)
+
+        # Check for early stopping
+        if early_stopping:
+            break
+
+    # Calculate a weighted score based on validation accuracy and loss
+    validation_score = VAL_ACC_HIST[-1] - AVG_VAL_LOSS_HIST[-1]
+
+    # Return the negative score as Optuna maximizes by default
+    return -validation_score
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=300, timeout=800)
+    study.optimize(objective, n_trials=100, show_progress_bar=True)
 
     # Print statistics
     print("Number of finished trials: ", len(study.trials))
-    pruned_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED]
+    pruned_trials = [
+        t for t in study.trials if t.state == optuna.trial.TrialState.PRUNED
+    ]
     print("Number of pruned trials: ", len(pruned_trials))
-    complete_trials = [t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE]
+    complete_trials = [
+        t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
+    ]
     print("Number of complete trials: ", len(complete_trials))
 
     # Print best trial
     trial = study.best_trial
     print("Best trial:")
-    print("  Value: ", trial.value)
+    print("  Value: ", -trial.value)  # Negate the value as it was maximized
     print("  Params: ")
     for key, value in trial.params.items():
         print(f"    {key}: {value}")
 
-
+    # Close TensorBoard writer
+    writer.close()
