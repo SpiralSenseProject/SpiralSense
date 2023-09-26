@@ -33,8 +33,12 @@ jobs:
           cd $HOME
           git clone ${{ secrets.HUGGINGFACE_GIT_CREDENTIALS }} $HOME/web
           GIT_LFS_SKIP_SMUDGE=1
-          cp -a $GITHUB_WORKSPACE/src/. $HOME/web/
+          rm -rf $HOME/web/__pycache__
+          rm -rf $HOME/web/handetect
+          rm -rf 
+          cp -a $GITHUB_WORKSPACE/src/handetect $HOME/web/
           cp $GITHUB_WORKSPACE/requirements.txt $HOME/web/
+          cp $GITHUB_WORKSPACE/src/app.py $HOME/web/app.py
           cd $HOME/web
           git add .
           git commit -m "Update"
