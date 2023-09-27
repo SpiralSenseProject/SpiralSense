@@ -36,7 +36,7 @@ jobs:
           rm -rf $HOME/web/__pycache__
           rm -rf $HOME/web/handetect
           rm -rf $HOME/web/*.py
-          cp -a $GITHUB_WORKSPACE/src/handetect/ $HOME/web/
+          cp -a $GITHUB_WORKSPACE/src/handetect/. $HOME/web/
           cp $GITHUB_WORKSPACE/requirements.txt $HOME/web/
           cp $GITHUB_WORKSPACE/src/app.py $HOME/web/app.py
           cd $HOME/web
