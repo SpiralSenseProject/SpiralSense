@@ -35,9 +35,8 @@ jobs:
           GIT_LFS_SKIP_SMUDGE=1
           rm -rf $HOME/web/__pycache__
           rm -rf $HOME/web/handetect
-          rm -rf 
-          
-          cp -a $GITHUB_WORKSPACE/src/handetect/. $HOME/web/
+          rm -rf *.py
+          cp -a $GITHUB_WORKSPACE/src/handetect/ $HOME/web/
           cp $GITHUB_WORKSPACE/requirements.txt $HOME/web/
           cp $GITHUB_WORKSPACE/src/app.py $HOME/web/app.py
           cd $HOME/web
