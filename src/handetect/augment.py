@@ -14,10 +14,20 @@ for task in tasks:
             if not os.path.exists(f"data/temp/Task {task}/{disease}/"):
                 os.makedirs(f"data/temp/Task {task}/{disease}/")
             for file in os.listdir(f"data/train/raw/Task {task}/{disease}"):
-                shutil.copy(f"data/train/raw/Task {task}/{disease}/{file}", f"data/temp/Task {task}/{disease}/{file}")
+                shutil.copy(
+                    f"data/train/raw/Task {task}/{disease}/{file}",
+                    f"data/temp/Task {task}/{disease}/{file}",
+                )
             for file in os.listdir(f"data/train/external/Task {task}/{disease}"):
-                shutil.copy(f"data/train/external/Task {task}/{disease}/{file}", f"data/temp/Task {task}/{disease}/{file}")
-            p = Augmentor.Pipeline(f"data/temp/Task {task}/{disease}", output_directory=f"{disease}/", save_format="png")
+                shutil.copy(
+                    f"data/train/external/Task {task}/{disease}/{file}",
+                    f"data/temp/Task {task}/{disease}/{file}",
+                )
+            p = Augmentor.Pipeline(
+                f"data/temp/Task {task}/{disease}",
+                output_directory=f"{disease}/",
+                save_format="png",
+            )
             p.rotate(probability=0.8, max_left_rotation=5, max_right_rotation=5)
             p.flip_left_right(probability=0.8)
             p.zoom_random(probability=0.8, percentage_area=0.8)
@@ -46,5 +56,3 @@ for task in tasks:
                     f"data/train/augmented/Task {task}/{disease}/{file}",
                     f"data/train/augmented/Task {task}/{disease}/{number}.png",
                 )
-
-

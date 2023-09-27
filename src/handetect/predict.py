@@ -20,13 +20,11 @@ torch.set_grad_enabled(False)
 
 
 def predict_image(image_path, model=MODEL, transform=preprocess):
-    classes = [
-        'Cerebral Palsy', 'Dystonia', 'Essential Tremor', 'Healthy', 'Huntington Disease', 'Parkinson Disease'
-    ]
+    classes = CLASSES
 
     print("---------------------------")
     print("Image path:", image_path)
-    image = Image.open(image_path)
+    image = Image.open(image_path).convert("RGB")
     image = transform(image).unsqueeze(0)
     image = image.to(DEVICE)
     output = model(image)
@@ -55,3 +53,6 @@ def predict_image(image_path, model=MODEL, transform=preprocess):
     print("---------------------------")
 
     return predicted_label, sorted_classes
+
+
+predict_image("data/test/Task 1/Healthy/01.png")

@@ -5,12 +5,12 @@ import torch.optim as optim
 from torchvision.transforms import transforms
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
-from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
 from models import *
 from torch.utils.tensorboard import SummaryWriter
 from configs import *
 import data_loader
+import numpy as np
 
 # Set up TensorBoard writer
 writer = SummaryWriter(log_dir="output/tensorboard/training")
@@ -28,8 +28,20 @@ train_loader, valid_loader = data_loader.load_data(
 # Initialize model, criterion, optimizer, and scheduler
 MODEL = MODEL.to(DEVICE)
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(MODEL.parameters(), lr=LEARNING_RATE)
+if OPTIMIZER_NAME == "LBFGS":
+    optimizer = optim.LBFGS(MODEL.parameters(), lr=LEARNING_RATE)
+elif OPTIMIZER_NAME == "Adam":
+    optimizer = optim.Adam(MODEL.parameters(), lr=LEARNING_RATE)
+elif OPTIMIZER_NAME == "SGD":
+    optimizer = optim.SGD(MODEL.parameters(), lr=LEARNING_RATE)
+    
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
+
+# Define early stopping parameters
+early_stopping_patience = 20  # Number of epochs with no improvement to wait before stopping
+best_val_loss = float("inf")
+best_val_accuracy = 0.0
+no_improvement_count = 0
 
 # Lists to store training and validation loss history
 TRAIN_LOSS_HIST = []
@@ -41,6 +53,7 @@ VAL_ACC_HIST = []
 
 # Training loop
 for epoch in range(NUM_EPOCHS):
+    print(f"[Epoch: {epoch + 1}]")
     MODEL.train()  # Set model to training mode
     running_loss = 0.0
     total_train = 0
@@ -52,7 +65,10 @@ for epoch in range(NUM_EPOCHS):
         outputs = MODEL(inputs)
         loss = criterion(outputs, labels)
         loss.backward()
-        optimizer.step()
+        if OPTIMIZER_NAME == "LBFGS":
+            optimizer.step(closure=lambda: loss)
+        else:
+            optimizer.step()
         running_loss += loss.item()
 
         if (i + 1) % NUM_PRINT == 0:
@@ -67,9 +83,9 @@ for epoch in range(NUM_EPOCHS):
         correct_train += (predicted == labels).sum().item()
 
     avg_train_loss = running_loss / len(train_loader)
-    TRAIN_LOSS_HIST.append(avg_train_loss)
+    AVG_TRAIN_LOSS_HIST.append(avg_train_loss)
     TRAIN_ACC_HIST.append(correct_train / total_train)
-
+    
     # Log training metrics
     train_metrics = {
         "Loss": avg_train_loss,
@@ -98,7 +114,7 @@ for epoch in range(NUM_EPOCHS):
             correct_val += (predicted == labels).sum().item()
 
     avg_val_loss = val_loss / len(valid_loader)
-    VAL_LOSS_HIST.append(avg_val_loss)
+    AVG_VAL_LOSS_HIST.append(avg_val_loss)
     VAL_ACC_HIST.append(correct_val / total_val)
 
     # Log validation metrics
@@ -107,14 +123,24 @@ for epoch in range(NUM_EPOCHS):
         "Accuracy": correct_val / total_val,
     }
     plot_and_log_metrics(val_metrics, epoch, prefix="Validation")
+    
+    # Print average training and validation metrics
+    print(f"Average Training Loss: {avg_train_loss:.6f}")
+    print(f"Average Validation Loss: {avg_val_loss:.6f}")
+    print(f"Training Accuracy: {correct_train / total_train:.6f}")
+    print(f"Validation Accuracy: {correct_val / total_val:.6f}")
+    
+    # Check for early stopping based on validation accuracy
+    if correct_val / total_val > best_val_accuracy:
+        best_val_accuracy = correct_val / total_val
+        no_improvement_count = 0
+    else:
+        no_improvement_count += 1
 
-    # Add sample images to TensorBoard
-    sample_images, _ = next(iter(valid_loader))
-    sample_images = sample_images.to(DEVICE)
-    grid_image = make_grid(
-        sample_images, nrow=8, normalize=True
-    )
-    writer.add_image("Sample Images", grid_image, global_step=epoch)
+    # Early stopping condition
+    if no_improvement_count >= early_stopping_patience:
+        print("Early stopping: Validation accuracy did not improve for {} consecutive epochs.".format(early_stopping_patience))
+        break  # Stop training
 
 # Save the model
 torch.save(MODEL.state_dict(), MODEL_SAVE_PATH)
@@ -123,16 +149,16 @@ print("Model saved at", MODEL_SAVE_PATH)
 # Plot loss and accuracy curves
 plt.figure(figsize=(12, 4))
 plt.subplot(1, 2, 1)
-plt.plot(range(1, NUM_EPOCHS + 1), TRAIN_LOSS_HIST, label="Train Loss")
-plt.plot(range(1, NUM_EPOCHS + 1), VAL_LOSS_HIST, label="Validation Loss")
+plt.plot(range(1, len(AVG_TRAIN_LOSS_HIST) + 1), AVG_TRAIN_LOSS_HIST, label="Average Train Loss")
+plt.plot(range(1, len(AVG_VAL_LOSS_HIST) + 1), AVG_VAL_LOSS_HIST, label="Average Validation Loss")
 plt.xlabel("Epochs")
 plt.ylabel("Loss")
 plt.legend()
 plt.title("Loss Curves")
 
 plt.subplot(1, 2, 2)
-plt.plot(range(1, NUM_EPOCHS + 1), TRAIN_ACC_HIST, label="Train Accuracy")
-plt.plot(range(1, NUM_EPOCHS + 1), VAL_ACC_HIST, label="Validation Accuracy")
+plt.plot(range(1, len(TRAIN_ACC_HIST) + 1), TRAIN_ACC_HIST, label="Train Accuracy")
+plt.plot(range(1, len(VAL_ACC_HIST) + 1), VAL_ACC_HIST, label="Validation Accuracy")
 plt.xlabel("Epochs")
 plt.ylabel("Accuracy")
 plt.legend()
