@@ -145,7 +145,7 @@ def objective(trial):
     # Modify the model and optimizer using suggested hyperparameters
     optimizer = optim.Adam(MODEL.parameters(), lr=learning_rate)
 
-    for epoch in range(10):
+    for epoch in range(20):
         train_epoch(epoch)
         early_stopping = validate_epoch(epoch)
 
@@ -161,7 +161,7 @@ def objective(trial):
 
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=100, show_progress_bar=True)
+    study.optimize(objective, timeout=3600)
 
     # Print statistics
     print("Number of finished trials: ", len(study.trials))

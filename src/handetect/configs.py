@@ -6,9 +6,9 @@ from models import *
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 NUM_EPOCHS = 100
-LEARNING_RATE = 0.001
+LEARNING_RATE =  0.05585974668605116
 STEP_SIZE = 10
 GAMMA = 0.5
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
