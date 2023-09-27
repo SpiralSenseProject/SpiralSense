@@ -1,5 +1,5 @@
 import gradio as gr
-import handetect.predict as predict
+import predict as predict
 
 
 def upload_file(files):
