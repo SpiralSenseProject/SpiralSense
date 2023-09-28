@@ -6,10 +6,10 @@ from models import *
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 NUM_EPOCHS = 100
-LEARNING_RATE = 0.04279442975996121
-OPTIMIZER_NAME = "LBFGS"
+LEARNING_RATE = 1.6317268278715415e-05
+OPTIMIZER_NAME = "Adam"
 STEP_SIZE = 10
 GAMMA = 0.5
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -22,7 +22,7 @@ NUM_CLASSES = 7
 # Define classes as listdir of augmented data
 CLASSES = os.listdir("data/train/augmented/Task 1/")
 MODEL_SAVE_PATH = "output/checkpoints/model.pth"
-MODEL = mobilenet_v2(num_classes=NUM_CLASSES)
+MODEL = googlenet(num_classes=NUM_CLASSES)
 
 print(CLASSES)
 

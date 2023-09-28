@@ -2,15 +2,11 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision.transforms import transforms
-from torch.utils.data import DataLoader
-from torchvision.utils import make_grid
 import matplotlib.pyplot as plt
 from models import *
 from torch.utils.tensorboard import SummaryWriter
 from configs import *
 import data_loader
-import numpy as np
 
 # Set up TensorBoard writer
 writer = SummaryWriter(log_dir="output/tensorboard/training")
@@ -54,6 +50,7 @@ VAL_ACC_HIST = []
 # Training loop
 for epoch in range(NUM_EPOCHS):
     print(f"[Epoch: {epoch + 1}]")
+    print("Learning rate:", scheduler.get_last_lr()[0])
     MODEL.train()  # Set model to training mode
     running_loss = 0.0
     total_train = 0
@@ -62,7 +59,10 @@ for epoch in range(NUM_EPOCHS):
     for i, (inputs, labels) in enumerate(train_loader, 0):
         inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
         optimizer.zero_grad()
-        outputs = MODEL(inputs)
+        if MODEL.__class__.__name__ == "GoogLeNet": # the shit GoogLeNet has a different output
+            outputs = MODEL(inputs).logits
+        else:
+            outputs = MODEL(inputs)
         loss = criterion(outputs, labels)
         loss.backward()
         if OPTIMIZER_NAME == "LBFGS":
