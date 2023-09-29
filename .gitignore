@@ -9,7 +9,6 @@ test_data/
 output/checkpoints/*.pth
 output/logs/*
 output/tensorboard/*
-data/train/augmented/*
 temp/
 .venv/
 ```

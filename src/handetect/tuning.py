@@ -9,20 +9,26 @@ from configs import *
 import data_loader
 from torch.utils.tensorboard import SummaryWriter
 
-optuna.logging.set_verbosity(optuna.logging.DEBUG)
-
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 10
+N_TRIALS = 50
+TIMEOUT = 3600  # 1 hour
 
 # Create a TensorBoard writer
-writer = SummaryWriter(log_dir="output/tensorboard/tuning/", )
+writer = SummaryWriter(log_dir="output/tensorboard/tuning")
+
 
 def create_data_loaders(batch_size):
     # Create or modify data loaders with the specified batch size
     train_loader, valid_loader = data_loader.load_data(
-        RAW_DATA_DIR, AUG_DATA_DIR, EXTERNAL_DATA_DIR, preprocess, batch_size=batch_size
+        RAW_DATA_DIR + str(TASK),
+        AUG_DATA_DIR + str(TASK),
+        EXTERNAL_DATA_DIR + str(TASK),
+        preprocess,
+        batch_size=batch_size,
     )
     return train_loader, valid_loader
+
 
 def objective(trial, model=MODEL):
     # Generate the model.
@@ -35,10 +41,15 @@ def objective(trial, model=MODEL):
     train_loader, valid_loader = create_data_loaders(batch_size)
 
     # Generate the optimizer.
-    optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "SGD"])
-    lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
-    optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
+    lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
+
+    # Suggest the gamma parameter for the learning rate scheduler.
+    gamma = trial.suggest_float("gamma", 0.1, 1.0, step=0.1)
+
+    # Create a learning rate scheduler with the suggested gamma.
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
 
     # Training of the model.
     for epoch in range(EPOCHS):
@@ -47,16 +58,18 @@ def objective(trial, model=MODEL):
         for batch_idx, (data, target) in enumerate(train_loader, 0):
             data, target = data.to(DEVICE), target.to(DEVICE)
             optimizer.zero_grad()
-            if model.__class__.__name__ == "GoogLeNet": # the shit GoogLeNet has a different output
+            if (
+                model.__class__.__name__ == "GoogLeNet"
+            ):  # the shit GoogLeNet has a different output
                 output = model(data).logits
             else:
                 output = model(data)
             loss = criterion(output, target)
             loss.backward()
-            if optimizer_name == "LBFGS":
-                optimizer.step(closure=lambda: loss)
-            else:
-                optimizer.step()
+            optimizer.step()
+
+        # Update the learning rate using the scheduler.
+        scheduler.step()
 
         # Validation of the model.
         model.eval()
@@ -74,14 +87,8 @@ def objective(trial, model=MODEL):
         # Log hyperparameters and accuracy to TensorBoard
         writer.add_scalar("Accuracy", accuracy, trial.number)
         writer.add_hparams(
-            {
-                "batch_size": batch_size,
-                "optimizer": optimizer_name,
-                "lr": lr
-            },
-            {
-                "accuracy": accuracy
-            }
+            {"batch_size": batch_size, "lr": lr, "gamma": gamma},
+            {"accuracy": accuracy},
         )
 
         # Print hyperparameters and accuracy
@@ -93,29 +100,29 @@ def objective(trial, model=MODEL):
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
 
+    if trial.number > 10 and trial.params["lr"] < 1e-3 and accuracy < 0.7:
+        return float("inf")  # Prune the trial
+
     return accuracy
+
 
 if __name__ == "__main__":
     pruner = optuna.pruners.HyperbandPruner()
-    study = optuna.create_study(direction="maximize", pruner=pruner, study_name="handetect")
-    study.optimize(objective, n_trials=100, timeout=1000)
+    study = optuna.create_study(
+        direction="maximize",  # Adjust the direction as per your optimization goal
+        pruner=pruner,
+        study_name="hyperparameter_tuning",
+    )
 
-    pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
-    complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
+    # Optimize the hyperparameters
+    study.optimize(
+        objective, n_trials=100, timeout=3600
+    )  # Adjust the number of trials and timeout as needed
 
-    print("Study statistics: ")
-    print("  Number of finished trials: ", len(study.trials))
-    print("  Number of pruned trials: ", len(pruned_trials))
-    print("  Number of complete trials: ", len(complete_trials))
-
+    # Print the best trial
+    best_trial = study.best_trial
     print("Best trial:")
-    trial = study.best_trial
-
-    print("  Value: ", trial.value)
-
+    print("  Value: ", best_trial.value)
     print("  Params: ")
-    for key, value in trial.params.items():
+    for key, value in best_trial.params.items():
         print("    {}: {}".format(key, value))
-
-    # Close TensorBoard writer
-    writer.close()

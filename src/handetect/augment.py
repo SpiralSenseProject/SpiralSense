@@ -2,30 +2,33 @@ import os
 import Augmentor
 import shutil
 from configs import *
+import uuid
 
 tasks = ["1", "2", "3", "4", "5", "6"]
 
-for task in tasks:
+for task in ["1"]:
     # Loop through all folders in Task 1 and generate augmented images for each class
-    for disease in os.listdir("data/train/raw/Task " + task):
-        if disease != ".DS_Store":
-            print("Augmenting images in class: ", disease, " in Task ", task)
+    for class_label in ['Alzheimer Disease', 'Cerebral Palsy', 'Dystonia', 'Essential Tremor', 'Healthy', 'Huntington Disease', 'Parkinson Disease']:
+        if class_label != ".DS_Store":
+            print("Augmenting images in class: ", class_label, " in Task ", task)
             # Create a temp folder to combine the raw data and the external data
-            if not os.path.exists(f"data/temp/Task {task}/{disease}/"):
-                os.makedirs(f"data/temp/Task {task}/{disease}/")
-            for file in os.listdir(f"data/train/raw/Task {task}/{disease}"):
-                shutil.copy(
-                    f"data/train/raw/Task {task}/{disease}/{file}",
-                    f"data/temp/Task {task}/{disease}/{file}",
-                )
-            for file in os.listdir(f"data/train/external/Task {task}/{disease}"):
-                shutil.copy(
-                    f"data/train/external/Task {task}/{disease}/{file}",
-                    f"data/temp/Task {task}/{disease}/{file}",
-                )
+            if not os.path.exists(f"{TEMP_DATA_DIR}Task {task}/{class_label}/"):
+                os.makedirs(f"{TEMP_DATA_DIR}Task {task}/{class_label}/")
+            if os.path.exists(f"{RAW_DATA_DIR}Task {task}/{class_label}"):
+                for file in os.listdir(f"{RAW_DATA_DIR}Task {task}/{class_label}"):
+                    shutil.copy(
+                        f"{RAW_DATA_DIR}Task {task}/{class_label}/{file}",
+                        f"{TEMP_DATA_DIR}Task {task}/{class_label}/{str(uuid.uuid4())}.png",
+                    )
+            if os.path.exists(f"{EXTERNAL_DATA_DIR}Task {task}/{class_label}"):
+                for file in os.listdir(f"{EXTERNAL_DATA_DIR}Task {task}/{class_label}"):
+                    shutil.copy(
+                        f"{EXTERNAL_DATA_DIR}Task {task}/{class_label}/{file}",
+                        f"{TEMP_DATA_DIR}Task {task}/{class_label}/{str(uuid.uuid4())}.png",
+                    )
             p = Augmentor.Pipeline(
-                f"data/temp/Task {task}/{disease}",
-                output_directory=f"{disease}/",
+                f"{TEMP_DATA_DIR}Task {task}/{class_label}",
+                output_directory=f"{class_label}/",
                 save_format="png",
             )
             p.rotate(probability=0.8, max_left_rotation=5, max_right_rotation=5)
@@ -39,20 +42,20 @@ for task in tasks:
             p.sample(100 - len(p.augmentor_images))
             # Move the folder to data/train/Task 1/augmented
             # Create the folder if it does not exist
-            if not os.path.exists(f"data/train/augmented/Task {task}/"):
-                os.makedirs(f"data/train/augmented/Task {task}/")
+            if not os.path.exists(f"{AUG_DATA_DIR}Task {task}/"):
+                os.makedirs(f"{AUG_DATA_DIR}Task {task}/")
             # Move all images in the data/train/Task 1/i folder to data/train/Task 1/augmented/i
             os.rename(
-                f"data/temp/Task {task}/{disease}/{disease}",
-                f"data/train/augmented/Task {task}/{disease}",
+                f"{TEMP_DATA_DIR}Task {task}/{class_label}/{class_label}",
+                f"{AUG_DATA_DIR}Task {task}/{class_label}",
             )
             # Rename all the augmented images to [01, 02, 03]
             number = 0
-            for file in os.listdir(f"data/train/augmented/Task {task}/{disease}"):
+            for file in os.listdir(f"{AUG_DATA_DIR}Task {task}/{class_label}"):
                 number = int(number) + 1
                 if len(str(number)) == 1:
                     number = "0" + str(number)
                 os.rename(
-                    f"data/train/augmented/Task {task}/{disease}/{file}",
-                    f"data/train/augmented/Task {task}/{disease}/{number}.png",
+                    f"{AUG_DATA_DIR}Task {task}/{class_label}/{file}",
+                    f"{AUG_DATA_DIR}Task {task}/{class_label}/{number}.png",
                 )

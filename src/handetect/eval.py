@@ -1,10 +1,9 @@
 import os
 import torch
 from torchvision.transforms import transforms
-from sklearn.metrics import f1_score
 import pathlib
 from PIL import Image
-from torchmetrics import ConfusionMatrix
+from torchmetrics import ConfusionMatrix, Accuracy, F1Score
 import matplotlib.pyplot as plt
 from configs import *
 from data_loader import load_data  # Import the load_data function
@@ -19,7 +18,6 @@ MODEL = MODEL.to(DEVICE)
 MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
 MODEL.eval()
 
-
 def predict_image(image_path, model, transform):
     model.eval()
     correct_predictions = 0
@@ -31,6 +29,9 @@ def predict_image(image_path, model, transform):
 
     true_classes = []
     predicted_labels = []
+
+    accuracy_metric = Accuracy(num_classes=NUM_CLASSES, task="multiclass")
+    f1_metric = F1Score(num_classes=NUM_CLASSES, task="multiclass")
 
     with torch.no_grad():
         for image_file in images:
@@ -57,7 +58,7 @@ def predict_image(image_path, model, transform):
     # Calculate accuracy and f1 score
     accuracy = correct_predictions / total_predictions
     print("Accuracy:", accuracy)
-    f1 = f1_score(true_classes, predicted_labels, average="weighted")
+    f1 = f1_metric(torch.tensor(predicted_labels), torch.tensor(true_classes)).item()
     print("Weighted F1 Score:", f1)
 
     # Convert the lists to tensors
@@ -66,13 +67,12 @@ def predict_image(image_path, model, transform):
 
     # Create a confusion matrix
     conf_matrix = ConfusionMatrix(num_classes=NUM_CLASSES, task="multiclass")
-    conf_matrix.update(predicted_labels_tensor, true_classes_tensor)
+    conf_matrix(predicted_labels_tensor, true_classes_tensor)
 
     # Plot the confusion matrix
     conf_matrix.compute()
     conf_matrix.plot()
     plt.show()
-
 
 # Call predict_image function
 predict_image(image_path, MODEL, preprocess)

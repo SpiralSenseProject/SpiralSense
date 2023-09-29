@@ -6,23 +6,23 @@ from models import *
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 64
+BATCH_SIZE = 16
 NUM_EPOCHS = 100
-LEARNING_RATE = 1.6317268278715415e-05
-OPTIMIZER_NAME = "Adam"
+LEARNING_RATE = 5.847227637580824e-05
 STEP_SIZE = 10
-GAMMA = 0.5
+GAMMA = 1.0
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
-RAW_DATA_DIR = r"data/train/raw/Task " + str(TASK)
-AUG_DATA_DIR = r"data/train/augmented/Task " + str(TASK)
-EXTERNAL_DATA_DIR = r"data/train/external/Task " + str(TASK)
+RAW_DATA_DIR = r"data/train/raw/Task "
+AUG_DATA_DIR = r"data/train/augmented/Task "
+EXTERNAL_DATA_DIR = r"data/train/external/Task "
+TEMP_DATA_DIR = "data/temp/"
 NUM_CLASSES = 7
-# Define classes as listdir of augmented data
-CLASSES = os.listdir("data/train/augmented/Task 1/")
+EARLY_STOPPING_PATIENCE = 20
+CLASSES = ['Alzheimer Disease', 'Cerebral Palsy', 'Dystonia', 'Essential Tremor', 'Healthy', 'Huntington Disease', 'Parkinson Disease']
 MODEL_SAVE_PATH = "output/checkpoints/model.pth"
-MODEL = googlenet(num_classes=NUM_CLASSES)
+MODEL = efficientnet_b1(num_classes=NUM_CLASSES)
 
 print(CLASSES)
 

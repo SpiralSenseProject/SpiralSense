@@ -34,3 +34,9 @@ from torchvision.models import shufflenet_v2_x1_0
 from torchvision.models import shufflenet_v2_x1_5
 from torchvision.models import shufflenet_v2_x2_0
 from torchvision.models import squeezenet1_1
+from torchvision.models import efficientnet_v2_s
+from torchvision.models import efficientnet_v2_m
+from torchvision.models import efficientnet_v2_l
+from torchvision.models import efficientnet_b0
+from torchvision.models import efficientnet_b1
+
