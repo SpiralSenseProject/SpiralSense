@@ -11,4 +11,5 @@ output/logs/*
 output/tensorboard/*
 temp/
 .venv/
+data/train/augmented/*
 ```

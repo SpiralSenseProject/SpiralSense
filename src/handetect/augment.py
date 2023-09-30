@@ -12,22 +12,22 @@ for task in ["1"]:
         if class_label != ".DS_Store":
             print("Augmenting images in class: ", class_label, " in Task ", task)
             # Create a temp folder to combine the raw data and the external data
-            if not os.path.exists(f"{TEMP_DATA_DIR}Task {task}/{class_label}/"):
-                os.makedirs(f"{TEMP_DATA_DIR}Task {task}/{class_label}/")
-            if os.path.exists(f"{RAW_DATA_DIR}Task {task}/{class_label}"):
-                for file in os.listdir(f"{RAW_DATA_DIR}Task {task}/{class_label}"):
+            if not os.path.exists(f"{TEMP_DATA_DIR}{task}/{class_label}/"):
+                os.makedirs(f"{TEMP_DATA_DIR}{task}/{class_label}/")
+            if os.path.exists(f"{RAW_DATA_DIR}{task}/{class_label}"):
+                for file in os.listdir(f"{RAW_DATA_DIR}{task}/{class_label}"):
                     shutil.copy(
-                        f"{RAW_DATA_DIR}Task {task}/{class_label}/{file}",
-                        f"{TEMP_DATA_DIR}Task {task}/{class_label}/{str(uuid.uuid4())}.png",
+                        f"{RAW_DATA_DIR}{task}/{class_label}/{file}",
+                        f"{TEMP_DATA_DIR}{task}/{class_label}/{str(uuid.uuid4())}.png",
                     )
-            if os.path.exists(f"{EXTERNAL_DATA_DIR}Task {task}/{class_label}"):
-                for file in os.listdir(f"{EXTERNAL_DATA_DIR}Task {task}/{class_label}"):
+            if os.path.exists(f"{EXTERNAL_DATA_DIR}{task}/{class_label}"):
+                for file in os.listdir(f"{EXTERNAL_DATA_DIR}{task}/{class_label}"):
                     shutil.copy(
-                        f"{EXTERNAL_DATA_DIR}Task {task}/{class_label}/{file}",
-                        f"{TEMP_DATA_DIR}Task {task}/{class_label}/{str(uuid.uuid4())}.png",
+                        f"{EXTERNAL_DATA_DIR}{task}/{class_label}/{file}",
+                        f"{TEMP_DATA_DIR}{task}/{class_label}/{str(uuid.uuid4())}.png",
                     )
             p = Augmentor.Pipeline(
-                f"{TEMP_DATA_DIR}Task {task}/{class_label}",
+                f"{TEMP_DATA_DIR}{task}/{class_label}",
                 output_directory=f"{class_label}/",
                 save_format="png",
             )
@@ -42,20 +42,20 @@ for task in ["1"]:
             p.sample(100 - len(p.augmentor_images))
             # Move the folder to data/train/Task 1/augmented
             # Create the folder if it does not exist
-            if not os.path.exists(f"{AUG_DATA_DIR}Task {task}/"):
-                os.makedirs(f"{AUG_DATA_DIR}Task {task}/")
+            if not os.path.exists(f"{AUG_DATA_DIR}{task}/"):
+                os.makedirs(f"{AUG_DATA_DIR}{task}/")
             # Move all images in the data/train/Task 1/i folder to data/train/Task 1/augmented/i
             os.rename(
-                f"{TEMP_DATA_DIR}Task {task}/{class_label}/{class_label}",
-                f"{AUG_DATA_DIR}Task {task}/{class_label}",
+                f"{TEMP_DATA_DIR}{task}/{class_label}/{class_label}",
+                f"{AUG_DATA_DIR}{task}/{class_label}",
             )
             # Rename all the augmented images to [01, 02, 03]
             number = 0
-            for file in os.listdir(f"{AUG_DATA_DIR}Task {task}/{class_label}"):
+            for file in os.listdir(f"{AUG_DATA_DIR}{task}/{class_label}"):
                 number = int(number) + 1
                 if len(str(number)) == 1:
                     number = "0" + str(number)
                 os.rename(
-                    f"{AUG_DATA_DIR}Task {task}/{class_label}/{file}",
-                    f"{AUG_DATA_DIR}Task {task}/{class_label}/{number}.png",
+                    f"{AUG_DATA_DIR}{task}/{class_label}/{file}",
+                    f"{AUG_DATA_DIR}{task}/{class_label}/{number}.png",
                 )

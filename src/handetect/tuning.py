@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 10
 N_TRIALS = 50
-TIMEOUT = 3600  # 1 hour
+TIMEOUT = None
 
 # Create a TensorBoard writer
 writer = SummaryWriter(log_dir="output/tensorboard/tuning")
@@ -116,8 +116,8 @@ if __name__ == "__main__":
 
     # Optimize the hyperparameters
     study.optimize(
-        objective, n_trials=100, timeout=3600
-    )  # Adjust the number of trials and timeout as needed
+        objective, n_trials=N_TRIALS, timeout=TIMEOUT
+    )
 
     # Print the best trial
     best_trial = study.best_trial

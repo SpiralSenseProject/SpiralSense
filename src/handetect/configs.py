@@ -6,11 +6,11 @@ from models import *
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 NUM_EPOCHS = 100
-LEARNING_RATE = 5.847227637580824e-05
+LEARNING_RATE = 0.00017588413773574044
 STEP_SIZE = 10
-GAMMA = 1.0
+GAMMA = 0.3
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
@@ -22,7 +22,7 @@ NUM_CLASSES = 7
 EARLY_STOPPING_PATIENCE = 20
 CLASSES = ['Alzheimer Disease', 'Cerebral Palsy', 'Dystonia', 'Essential Tremor', 'Healthy', 'Huntington Disease', 'Parkinson Disease']
 MODEL_SAVE_PATH = "output/checkpoints/model.pth"
-MODEL = efficientnet_b1(num_classes=NUM_CLASSES)
+MODEL = squeezenet1_0(num_classes=NUM_CLASSES)
 
 print(CLASSES)
 
