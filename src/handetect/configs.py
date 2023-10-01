@@ -8,11 +8,11 @@ from torchvision.models import squeezenet1_0, SqueezeNet1_0_Weights
 from torchvision.models import squeezenet1_0
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 NUM_EPOCHS = 40
-LEARNING_RATE = 0.00017588413773574044
+LEARNING_RATE = 5.488903014780378e-05
 STEP_SIZE = 10
-GAMMA = 0.9
+GAMMA = 0.3
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
