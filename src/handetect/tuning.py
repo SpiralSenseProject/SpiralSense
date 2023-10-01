@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 10
 N_TRIALS = 50
-TIMEOUT = None
+TIMEOUT = 900
 
 # Create a TensorBoard writer
 writer = SummaryWriter(log_dir="output/tensorboard/tuning")
