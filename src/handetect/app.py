@@ -35,9 +35,7 @@ demo = gr.Interface(
     title="HANDETECT",
     description="An innovative AI-powered system that facilitates early detection and monitoring of movement disorders through handwriting assessment",
     inputs=[
-        gr.inputs.Image(
-            source="upload", type="filepath", label="Choose Image"
-        ),
+        gr.components.Image(type="filepath", label="Choose Image"),
     ],
     outputs=[
         gr.outputs.Textbox(label="Prediction 1"),
