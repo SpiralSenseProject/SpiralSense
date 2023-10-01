@@ -54,5 +54,3 @@ def predict_image(image_path, model=MODEL, transform=preprocess):
 
     return predicted_label, sorted_classes
 
-
-predict_image("data/test/Task 1/Healthy/01.png")
