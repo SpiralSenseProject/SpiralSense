@@ -8,7 +8,15 @@ tasks = ["1", "2", "3", "4", "5", "6"]
 
 for task in ["1"]:
     # Loop through all folders in Task 1 and generate augmented images for each class
-    for class_label in ['Alzheimer Disease', 'Cerebral Palsy', 'Dystonia', 'Essential Tremor', 'Healthy', 'Huntington Disease', 'Parkinson Disease']:
+    for class_label in [
+        "Alzheimer Disease",
+        "Cerebral Palsy",
+        "Dystonia",
+        "Essential Tremor",
+        "Healthy",
+        "Huntington Disease",
+        "Parkinson Disease",
+    ]:
         if class_label != ".DS_Store":
             print("Augmenting images in class: ", class_label, " in Task ", task)
             # Create a temp folder to combine the raw data and the external data

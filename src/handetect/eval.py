@@ -18,6 +18,7 @@ MODEL = MODEL.to(DEVICE)
 MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
 MODEL.eval()
 
+
 def predict_image(image_path, model, transform):
     model.eval()
     correct_predictions = 0
@@ -73,6 +74,7 @@ def predict_image(image_path, model, transform):
     conf_matrix.compute()
     conf_matrix.plot()
     plt.show()
+
 
 # Call predict_image function
 predict_image(image_path, MODEL, preprocess)

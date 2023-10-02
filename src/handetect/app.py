@@ -30,7 +30,7 @@ def process_file(webcam_filepath, upload_filepath):
 
 
 demo = gr.Interface(
-    theme='gradio/soft',
+    theme="gradio/soft",
     fn=process_file,
     title="HANDETECT",
     description="An innovative AI-powered system that facilitates early detection and monitoring of movement disorders through handwriting assessment",

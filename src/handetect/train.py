@@ -15,7 +15,10 @@ def setup_tensorboard():
 
 def load_and_preprocess_data():
     return data_loader.load_data(
-        RAW_DATA_DIR + str(TASK), AUG_DATA_DIR + str(TASK), EXTERNAL_DATA_DIR + str(TASK), preprocess
+        RAW_DATA_DIR + str(TASK),
+        AUG_DATA_DIR + str(TASK),
+        EXTERNAL_DATA_DIR + str(TASK),
+        preprocess,
     )
 
 

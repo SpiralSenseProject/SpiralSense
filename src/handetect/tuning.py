@@ -115,9 +115,7 @@ if __name__ == "__main__":
     )
 
     # Optimize the hyperparameters
-    study.optimize(
-        objective, n_trials=N_TRIALS, timeout=TIMEOUT
-    )
+    study.optimize(objective, n_trials=N_TRIALS, timeout=TIMEOUT)
 
     # Print the best trial
     best_trial = study.best_trial
