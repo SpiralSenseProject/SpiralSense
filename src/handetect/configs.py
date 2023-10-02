@@ -118,7 +118,7 @@ class ResNet18WithNorm(nn.Module):
         return x
 
 
-MODEL = ResNet18WithNorm(num_classes=7)
+MODEL = SqueezeNet1_0WithDropout(num_classes=7)
 print(CLASSES)
 
 preprocess = transforms.Compose(
