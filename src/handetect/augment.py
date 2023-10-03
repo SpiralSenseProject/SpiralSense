@@ -46,6 +46,7 @@ for task in ["1"]:
             p.random_brightness(probability=0.8, min_factor=0.5, max_factor=1.5)
             p.random_contrast(probability=0.8, min_factor=0.5, max_factor=1.5)
             p.random_color(probability=0.8, min_factor=0.5, max_factor=1.5)
+            p.rotate_random_90(probability=0.8)
             # Generate 100 - total of original images so that the total number of images in each class is 100
             p.sample(100 - len(p.augmentor_images))
             # Move the folder to data/train/Task 1/augmented

@@ -14,11 +14,11 @@ from torchvision.models import squeezenet1_0
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 NUM_EPOCHS = 40
-LEARNING_RATE = 0.005873024218838728
+LEARNING_RATE = 5.488903014780378e-05
 STEP_SIZE = 10
-GAMMA = 0.9
+GAMMA = 0.3
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
@@ -37,7 +37,7 @@ CLASSES = [
     "Huntington Disease",
     "Parkinson Disease",
 ]
-MODEL_SAVE_PATH = "output/checkpoints/model.pth"
+MODEL_SAVE_PATH = r"output/checkpoints/model.pth"
 
 
 class SqueezeNet1_0WithDropout(nn.Module):
