@@ -15,10 +15,10 @@ from torchvision.models import squeezenet1_0
 # Constants
 RANDOM_SEED = 123
 BATCH_SIZE = 16
-NUM_EPOCHS = 40
-LEARNING_RATE = 5.488903014780378e-05
+NUM_EPOCHS = 100
+LEARNING_RATE = 2.0950584442749585e-05
 STEP_SIZE = 10
-GAMMA = 0.3
+GAMMA = 0.5
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
@@ -125,6 +125,7 @@ preprocess = transforms.Compose(
     [
         transforms.Resize((64, 64)),  # Resize images to 64x64
         transforms.ToTensor(),  # Convert to tensor
+        transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
         # Normalize 3 channels
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]
