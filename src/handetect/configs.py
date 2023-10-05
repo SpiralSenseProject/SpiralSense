@@ -14,17 +14,18 @@ from torchvision.models import squeezenet1_0
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 16
+BATCH_SIZE = 64
 NUM_EPOCHS = 100
-LEARNING_RATE = 2.0950584442749585e-05
+LEARNING_RATE = 0.00016633192288673592
 STEP_SIZE = 10
-GAMMA = 0.5
+GAMMA = 0.9
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
 RAW_DATA_DIR = r"data/train/raw/Task "
 AUG_DATA_DIR = r"data/train/augmented/Task "
 EXTERNAL_DATA_DIR = r"data/train/external/Task "
+COMBINED_DATA_DIR = r"data/train/combined/Task "
 TEMP_DATA_DIR = "data/temp/"
 NUM_CLASSES = 7
 EARLY_STOPPING_PATIENCE = 20
@@ -108,7 +109,7 @@ class ResNet18WithNorm(nn.Module):
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
             nn.Linear(512, num_classes),
-            nn.BatchNorm2d(num_classes),  # Add batch normalization
+            nn.BatchNorm1d(num_classes),  # Add batch normalization
         )
 
     def forward(self, x):
@@ -123,7 +124,7 @@ print(CLASSES)
 
 preprocess = transforms.Compose(
     [
-        transforms.Resize((64, 64)),  # Resize images to 64x64
+        transforms.Resize((112, 112)), # Resize to 112x112
         transforms.ToTensor(),  # Convert to tensor
         transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
         # Normalize 3 channels

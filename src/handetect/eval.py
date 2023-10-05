@@ -5,17 +5,23 @@ import pathlib
 from PIL import Image
 from torchmetrics import ConfusionMatrix, Accuracy, F1Score
 import matplotlib.pyplot as plt
+from sklearn.metrics import (
+    classification_report,
+    precision_recall_curve,
+    roc_curve,
+    auc,
+    confusion_matrix,
+)
 from configs import *
 from data_loader import load_data  # Import the load_data function
-
-image_path = "data/test/Task 1/"
+import numpy as np
 
 # Constants
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Load the model
 MODEL = MODEL.to(DEVICE)
-MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+MODEL.load_state_dict(torch.load(r"C:\Users\User\Documents\Flutter-test\handetect\assets\model.pt", map_location=DEVICE))
 MODEL.eval()
 
 
@@ -30,6 +36,7 @@ def predict_image(image_path, model, transform):
 
     true_classes = []
     predicted_labels = []
+    predicted_scores = []  # To store predicted class probabilities
 
     accuracy_metric = Accuracy(num_classes=NUM_CLASSES, task="multiclass")
     f1_metric = F1Score(num_classes=NUM_CLASSES, task="multiclass")
@@ -51,6 +58,9 @@ def predict_image(image_path, model, transform):
             # Append true and predicted labels to their respective lists
             true_classes.append(true_class)
             predicted_labels.append(predicted_class)
+            predicted_scores.append(
+                output.softmax(dim=1).cpu().numpy()
+            )  # Store predicted class probabilities
 
             # Check if the prediction is correct
             if predicted_class == true_class:
@@ -73,8 +83,18 @@ def predict_image(image_path, model, transform):
     # Plot the confusion matrix
     conf_matrix.compute()
     conf_matrix.plot()
+    plt.title("Confusion Matrix")
     plt.show()
 
+    # Classification report
+    class_names = [str(cls) for cls in range(NUM_CLASSES)]
+    report = classification_report(
+        true_classes, predicted_labels, target_names=class_names
+    )
+    print("Classification Report:\n", report)
+    
+    
 
-# Call predict_image function
-predict_image(image_path, MODEL, preprocess)
+
+# Call predict_image function with your image path
+predict_image("data/test/Task 1/", MODEL, preprocess)
