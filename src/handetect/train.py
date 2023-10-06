@@ -7,10 +7,42 @@ from models import *
 from torch.utils.tensorboard import SummaryWriter
 from configs import *
 import data_loader
+import torch.nn.functional as F
+import numpy as np
+
+
+class LabelSmoothingLoss(nn.Module):
+    def __init__(self, epsilon=0.1, num_classes=2):
+        super(LabelSmoothingLoss, self).__init__()
+        self.epsilon = epsilon
+        self.num_classes = num_classes
+
+    def forward(self, input, target):
+        target_smooth = (1 - self.epsilon) * target + self.epsilon / self.num_classes
+        return nn.CrossEntropyLoss()(input, target_smooth)
 
 
 def setup_tensorboard():
     return SummaryWriter(log_dir="output/tensorboard/training")
+
+
+def mixup_data(x, y, alpha=1.0):
+    """Returns mixed inputs, pairs of targets, and lambda"""
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    batch_size = x.size()[0]
+    index = torch.randperm(batch_size)
+
+    mixed_x = lam * x + (1 - lam) * x[index, :]
+    y_a, y_b = y, y[index]
+    return mixed_x, y_a, y_b, lam
+
+
+def mixup_criterion(criterion, pred, y_a, y_b, lam):
+    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
 
 
 def load_and_preprocess_data():
@@ -26,7 +58,7 @@ def initialize_model_optimizer_scheduler():
     model = MODEL.to(DEVICE)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
     return model, criterion, optimizer, scheduler
 
 
@@ -35,7 +67,7 @@ def plot_and_log_metrics(metrics_dict, step, writer, prefix="Train"):
         writer.add_scalar(f"{prefix}/{metric_name}", metric_value, step)
 
 
-def train_one_epoch(model, criterion, optimizer, train_loader, epoch):
+def train_one_epoch(model, criterion, optimizer, train_loader, epoch, alpha):
     model.train()
     running_loss = 0.0
     total_train = 0
@@ -44,11 +76,15 @@ def train_one_epoch(model, criterion, optimizer, train_loader, epoch):
     for i, (inputs, labels) in enumerate(train_loader, 0):
         inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
         optimizer.zero_grad()
-        if model.__class__.__name__ == "GoogLeNet":
-            outputs = model(inputs).logits
-        else:
-            outputs = model(inputs)
-        loss = criterion(outputs, labels)
+
+        # Apply mixup
+        inputs, targets_a, targets_b, lam = mixup_data(inputs, labels, alpha)
+
+        outputs = model(inputs)
+
+        # Calculate mixup loss
+        loss = mixup_criterion(criterion, outputs, targets_a, targets_b, lam)
+
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
@@ -107,7 +143,7 @@ def main_training_loop():
         print("Learning rate:", scheduler.get_last_lr()[0])
 
         avg_train_loss, train_accuracy = train_one_epoch(
-            model, criterion, optimizer, train_loader, epoch
+            model, criterion, optimizer, train_loader, epoch, MIXUP_ALPHA
         )
         AVG_TRAIN_LOSS_HIST.append(avg_train_loss)
         TRAIN_ACC_HIST.append(train_accuracy)
@@ -154,7 +190,7 @@ def main_training_loop():
                 )
             )
             break
-
+    MODEL_SAVE_PATH = "output/checkpoints/model.pth"
     # Ensure the parent directory exists
     os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
     torch.save(model.state_dict(), MODEL_SAVE_PATH)
