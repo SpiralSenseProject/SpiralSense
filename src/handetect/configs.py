@@ -20,11 +20,11 @@ from pytorchcv.model_provider import get_model as ptcv_get_model
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 NUM_EPOCHS = 40
-LEARNING_RATE = 0.00016662575248025378
+LEARNING_RATE = 1.0185030582920333e-05
 STEP_SIZE = 10
-GAMMA = 0.9
+GAMMA = 0.1
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
@@ -36,7 +36,7 @@ TEMP_DATA_DIR = "data/temp/"
 NUM_CLASSES = 7
 LABEL_SMOOTHING_EPSILON = 0.1
 MIXUP_ALPHA = 0.2
-EARLY_STOPPING_PATIENCE = 20
+EARLY_STOPPING_PATIENCE = 10
 CLASSES = [
     "Alzheimer Disease",
     "Cerebral Palsy",
@@ -141,13 +141,13 @@ class MobileNetV3SmallWithDropout(nn.Module):
         return x
 
 
-MODEL = SqueezeNet1_0WithDropout(num_classes=7)
+MODEL = SqueezeNet1_1WithDropout(num_classes=7)
 # MODEL = ptcv_get_model("sqnxt23v5_w2", pretrained=False, num_classes=7)
 print(CLASSES)
 
 preprocess = transforms.Compose(
     [
-        transforms.Resize((274, 274)),  # Resize to 112x112
+        transforms.Resize((112, 112)),  # Resize to 112x112
         transforms.ToTensor(),  # Convert to tensor
         transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
         # Normalize 3 channels

@@ -12,14 +12,14 @@ from torch.utils.tensorboard import SummaryWriter
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 10
 N_TRIALS = 1000
-TIMEOUT = 14400  
+TIMEOUT = 3600
+EARLY_STOPPING_PATIENCE = 3  # Number of epochs with no improvement to trigger early stopping
 
 # Create a TensorBoard writer
 writer = SummaryWriter(log_dir="output/tensorboard/tuning")
 
-
+# Function to create or modify data loaders with the specified batch size
 def create_data_loaders(batch_size):
-    # Create or modify data loaders with the specified batch size
     train_loader, valid_loader = data_loader.load_data(
         RAW_DATA_DIR + str(TASK),
         AUG_DATA_DIR + str(TASK),
@@ -29,38 +29,33 @@ def create_data_loaders(batch_size):
     )
     return train_loader, valid_loader
 
-
+# Objective function for optimization
 def objective(trial, model=MODEL):
-    # Generate the model.
     model = model.to(DEVICE)
-
-    # Suggest batch size for tuning.
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
-
-    # Create data loaders with the suggested batch size.
     train_loader, valid_loader = create_data_loaders(batch_size)
 
-    # Generate the optimizer.
-    lr = trial.suggest_float("lr", 1e-5, 1e-1, log=True)
+    lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    # Suggest the gamma parameter for the learning rate scheduler.
-    gamma = trial.suggest_float("gamma", 0.1, 1.0, step=0.1)
+    gamma = trial.suggest_float("gamma", 0.1, 0.9, step=0.1)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
-    # Create a learning rate scheduler with the suggested gamma.
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
+    print(f"\n[INFO] Trial: {trial.number}")
+    print(f"Batch Size: {batch_size}")
+    print(f"Learning Rate: {lr}")
+    print(f"Gamma: {gamma}\n")
 
-    # Training of the model.
+    early_stopping_counter = 0
+    best_accuracy = 0.0
+
     for epoch in range(EPOCHS):
-        print(f"[Epoch: {epoch} | Trial: {trial.number}]")
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader, 0):
             data, target = data.to(DEVICE), target.to(DEVICE)
             optimizer.zero_grad()
-            if (
-                model.__class__.__name__ == "GoogLeNet"
-            ):  # the shit GoogLeNet has a different output
+            if model.__class__.__name__ == "GoogLeNet":
                 output = model(data).logits
             else:
                 output = model(data)
@@ -68,17 +63,14 @@ def objective(trial, model=MODEL):
             loss.backward()
             optimizer.step()
 
-        # Update the learning rate using the scheduler.
         scheduler.step()
 
-        # Validation of the model.
         model.eval()
         correct = 0
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(valid_loader, 0):
                 data, target = data.to(DEVICE), target.to(DEVICE)
                 output = model(data)
-                # Get the index of the max log-probability.
                 pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -91,36 +83,40 @@ def objective(trial, model=MODEL):
             {"accuracy": accuracy},
         )
 
-        # Print hyperparameters and accuracy
-        print("Hyperparameters: ", trial.params)
-        print("Accuracy: ", accuracy)
+        print(f"[EPOCH {epoch + 1}] Accuracy: {accuracy:.4f}")
+
         trial.report(accuracy, epoch)
 
-        # Handle pruning based on the intermediate value.
-        if trial.should_prune():
-            raise optuna.exceptions.TrialPruned()
+        if accuracy > best_accuracy:
+            best_accuracy = accuracy
+            early_stopping_counter = 0
+        else:
+            early_stopping_counter += 1
 
-    if trial.number > 10 and trial.params["lr"] < 1e-3 and accuracy < 0.7:
-        return float("inf")  # Prune the trial
+        # Early stopping check
+        if early_stopping_counter >= EARLY_STOPPING_PATIENCE:
+            print(f"\nEarly stopping at epoch {epoch + 1}")
+            break
 
-    return accuracy
+    if trial.number > 10 and trial.params["lr"] < 1e-3 and best_accuracy < 0.7:
+        return float("inf")
 
+    return best_accuracy
 
 if __name__ == "__main__":
     pruner = optuna.pruners.HyperbandPruner()
     study = optuna.create_study(
-        direction="maximize",  # Adjust the direction as per your optimization goal
+        direction="maximize",
         pruner=pruner,
         study_name="hyperparameter_tuning",
     )
 
-    # Optimize the hyperparameters
     study.optimize(objective, n_trials=N_TRIALS, timeout=TIMEOUT)
 
-    # Print the best trial
     best_trial = study.best_trial
-    print("Best trial:")
-    print("  Value: ", best_trial.value)
-    print("  Params: ")
+    print("\nBest Trial:")
+    print(f"  Trial Number: {best_trial.number}")
+    print(f"  Best Accuracy: {best_trial.value:.4f}")
+    print("  Hyperparameters:")
     for key, value in best_trial.params.items():
-        print("    {}: {}".format(key, value))
+        print(f"    {key}: {value}")

@@ -12,7 +12,7 @@ import numpy as np
 
 
 class LabelSmoothingLoss(nn.Module):
-    def __init__(self, epsilon=0.1, num_classes=2):
+    def __init__(self, epsilon=0.1, num_classes=7):
         super(LabelSmoothingLoss, self).__init__()
         self.epsilon = epsilon
         self.num_classes = num_classes
@@ -91,8 +91,8 @@ def train_one_epoch(model, criterion, optimizer, train_loader, epoch, alpha):
 
         if (i + 1) % NUM_PRINT == 0:
             print(
-                "[Epoch %d, Batch %d] Loss: %.6f"
-                % (epoch + 1, i + 1, running_loss / NUM_PRINT)
+                f"[Epoch {epoch + 1}, Batch {i + 1}/{len(train_loader)}] "
+                f"Loss: {running_loss / NUM_PRINT:.6f}"
             )
             running_loss = 0.0
 
@@ -139,7 +139,7 @@ def main_training_loop():
     VAL_ACC_HIST = []
 
     for epoch in range(NUM_EPOCHS):
-        print(f"[Epoch: {epoch + 1}]")
+        print(f"\n[Epoch: {epoch + 1}/{NUM_EPOCHS}]")
         print("Learning rate:", scheduler.get_last_lr()[0])
 
         avg_train_loss, train_accuracy = train_one_epoch(
@@ -167,7 +167,7 @@ def main_training_loop():
             "Loss": avg_val_loss,
             "Accuracy": val_accuracy,
         }
-        plot_and_log_metrics(train_metrics, epoch, writer=writer, prefix="Train")
+        plot_and_log_metrics(val_metrics, epoch, writer=writer, prefix="Validation")
 
         # Print average training and validation metrics
         print(f"Average Training Loss: {avg_train_loss:.6f}")
@@ -190,11 +190,12 @@ def main_training_loop():
                 )
             )
             break
+
     MODEL_SAVE_PATH = "output/checkpoints/model.pth"
     # Ensure the parent directory exists
     os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
     torch.save(model.state_dict(), MODEL_SAVE_PATH)
-    print("Model saved at", MODEL_SAVE_PATH)
+    print("\nModel saved at", MODEL_SAVE_PATH)
 
     # Plot loss and accuracy curves
     plt.figure(figsize=(12, 4))
