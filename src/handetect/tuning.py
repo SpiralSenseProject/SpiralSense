@@ -13,7 +13,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 10
 N_TRIALS = 1000
 TIMEOUT = 3600
-EARLY_STOPPING_PATIENCE = 3  # Number of epochs with no improvement to trigger early stopping
+EARLY_STOPPING_PATIENCE = 5  # Number of epochs with no improvement to trigger early stopping
 
 # Create a TensorBoard writer
 writer = SummaryWriter(log_dir="output/tensorboard/tuning")

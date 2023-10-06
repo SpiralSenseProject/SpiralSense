@@ -13,6 +13,8 @@ from torchvision.models import (
     ShuffleNet_V2_X2_0_Weights,
     mobilenet_v3_small,
     MobileNet_V3_Small_Weights,
+    efficientnet_v2_s,
+    EfficientNet_V2_S_Weights,
 )
 
 import torch.nn.functional as F
@@ -22,9 +24,9 @@ from pytorchcv.model_provider import get_model as ptcv_get_model
 RANDOM_SEED = 123
 BATCH_SIZE = 32
 NUM_EPOCHS = 40
-LEARNING_RATE = 1.0185030582920333e-05
+LEARNING_RATE = 1.4257700984917018e-05
 STEP_SIZE = 10
-GAMMA = 0.1
+GAMMA = 0.6
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
@@ -141,7 +143,29 @@ class MobileNetV3SmallWithDropout(nn.Module):
         return x
 
 
-MODEL = SqueezeNet1_1WithDropout(num_classes=7)
+class EfficientNetV2SmallWithDropout(nn.Module):
+    def __init__(self, num_classes, dropout_prob=0.5):
+        super(EfficientNetV2SmallWithDropout, self).__init__()
+        efficientnet = efficientnet_v2_s(weights=EfficientNet_V2_S_Weights.DEFAULT)
+        self.features = efficientnet.features
+        self.classifier = nn.Sequential(
+            nn.Conv2d(1280, num_classes, kernel_size=1),
+            nn.BatchNorm2d(num_classes),  # add batch normalization
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1)),
+        )
+        self.dropout = nn.Dropout(
+            dropout_prob
+        )  # Add dropout layer with the specified probability
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        x = F.dropout(x, training=self.training)  # Apply dropout during training
+        x = torch.flatten(x, 1)
+        return x
+
+MODEL = EfficientNetV2SmallWithDropout(num_classes=7, dropout_prob=0.5)
 # MODEL = ptcv_get_model("sqnxt23v5_w2", pretrained=False, num_classes=7)
 print(CLASSES)
 

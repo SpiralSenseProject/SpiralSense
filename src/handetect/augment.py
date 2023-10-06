@@ -6,7 +6,11 @@ import uuid
 
 tasks = ["1", "2", "3", "4", "5", "6"]
 
+shutil.rmtree(TEMP_DATA_DIR)
+
+
 for task in ["1"]:
+    shutil.rmtree(AUG_DATA_DIR + task)
     # Loop through all folders in Task 1 and generate augmented images for each class
     for class_label in [
         "Alzheimer Disease",
@@ -67,3 +71,5 @@ for task in ["1"]:
                     f"{AUG_DATA_DIR}{task}/{class_label}/{file}",
                     f"{AUG_DATA_DIR}{task}/{class_label}/{number}.png",
                 )
+
+shutil.rmtree(TEMP_DATA_DIR)
