@@ -6,9 +6,10 @@ avg_loss_plot.png
 src/handetect/__pycache__/
 test_data/
 */test.py
-output/checkpoints/*.pth
+output/checkpoints/*
 output/logs/*
 output/tensorboard/*
 temp/
 .venv/
+data/train/augmented/*
 ```

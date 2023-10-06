@@ -50,9 +50,5 @@ def predict_image(image_path, model=MODEL, transform=preprocess):
     # Report the prediction
     print("Predicted class:", predicted_label)
     print("Predicted label:", predicted_class)
-    print("---------------------------")
 
-    return predicted_label, sorted_classes
-
-
-predict_image("data/test/Task 1/Healthy/01.png")
+    return sorted_classes

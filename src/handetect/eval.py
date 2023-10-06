@@ -1,14 +1,22 @@
 import os
 import torch
-from torchvision.transforms import transforms
+import numpy as np
 import pathlib
 from PIL import Image
-from torchmetrics import ConfusionMatrix, Accuracy, F1Score
 import matplotlib.pyplot as plt
+from sklearn.metrics import (
+    classification_report,
+    precision_recall_curve,
+    accuracy_score,
+    f1_score,
+    confusion_matrix,
+    ConfusionMatrixDisplay,
+    roc_curve,
+    auc,
+)
+from sklearn.preprocessing import label_binarize
 from configs import *
 from data_loader import load_data  # Import the load_data function
-
-image_path = "data/test/Task 1/"
 
 # Constants
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -29,9 +37,7 @@ def predict_image(image_path, model, transform):
 
     true_classes = []
     predicted_labels = []
-
-    accuracy_metric = Accuracy(num_classes=NUM_CLASSES, task="multiclass")
-    f1_metric = F1Score(num_classes=NUM_CLASSES, task="multiclass")
+    predicted_scores = []  # To store predicted class probabilities
 
     with torch.no_grad():
         for image_file in images:
@@ -50,29 +56,53 @@ def predict_image(image_path, model, transform):
             # Append true and predicted labels to their respective lists
             true_classes.append(true_class)
             predicted_labels.append(predicted_class)
+            predicted_scores.append(
+                output.softmax(dim=1).cpu().numpy()
+            )  # Store predicted class probabilities
 
             # Check if the prediction is correct
             if predicted_class == true_class:
                 correct_predictions += 1
 
     # Calculate accuracy and f1 score
-    accuracy = correct_predictions / total_predictions
+    accuracy = accuracy_score(true_classes, predicted_labels)
     print("Accuracy:", accuracy)
-    f1 = f1_metric(torch.tensor(predicted_labels), torch.tensor(true_classes)).item()
+    f1 = f1_score(true_classes, predicted_labels, average="weighted")
     print("Weighted F1 Score:", f1)
 
     # Convert the lists to tensors
     predicted_labels_tensor = torch.tensor(predicted_labels)
     true_classes_tensor = torch.tensor(true_classes)
 
-    # Create a confusion matrix
-    conf_matrix = ConfusionMatrix(num_classes=NUM_CLASSES, task="multiclass")
-    conf_matrix(predicted_labels_tensor, true_classes_tensor)
+    # Calculate the confusion matrix
+    conf_matrix = confusion_matrix(true_classes, predicted_labels)
 
     # Plot the confusion matrix
-    conf_matrix.compute()
-    conf_matrix.plot()
+    ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=CLASSES).plot(cmap=plt.cm.Blues)
+    plt.title("Confusion Matrix")
     plt.show()
 
-# Call predict_image function
-predict_image(image_path, MODEL, preprocess)
+    # Classification report
+    class_names = [str(cls) for cls in range(NUM_CLASSES)]
+    report = classification_report(
+        true_classes, predicted_labels, target_names=class_names
+    )
+    print("Classification Report:\n", report)
+
+    # Calculate precision and recall for each class
+    true_classes_binary = label_binarize(true_classes, classes=range(NUM_CLASSES))
+    precision, recall, _ = precision_recall_curve(
+        true_classes_binary.ravel(), np.array(predicted_scores).ravel()
+    )
+
+    # Plot precision-recall curve
+    plt.figure(figsize=(10, 6))
+    plt.plot(recall, precision)
+    plt.title("Precision-Recall Curve")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.show()
+
+
+# Call predict_image function with your image path
+predict_image("data/test/Task 1/", MODEL, preprocess)

@@ -1,5 +1,9 @@
 import gradio as gr
 import predict as predict
+from googletrans import Translator, constants
+from pprint import pprint
+
+translator = Translator()
 
 
 def upload_file(files):
@@ -29,15 +33,21 @@ def process_file(webcam_filepath, upload_filepath):
         return result
 
 
+def generate_description(request: gr.Request):
+    translation = translator.translate(
+        "SqueezeNet-Based Deep Learning for Early Detection of Movement Disorders via Handwriting Assessment",
+        dest=str(request.request.headers["Accept-Language"].split(",")[0].lower()[0:2]),
+    )
+    return translation.text
+
+
 demo = gr.Interface(
-    theme='gradio/soft',
+    theme="gradio/soft",
     fn=process_file,
     title="HANDETECT",
-    description="An innovative AI-powered system that facilitates early detection and monitoring of movement disorders through handwriting assessment",
+    description=generate_description,
     inputs=[
-        gr.inputs.Image(
-            source="upload", type="filepath", label="Choose Image"
-        ),
+        gr.components.Image(type="filepath", label="Choose Image", source="upload"),
     ],
     outputs=[
         gr.outputs.Textbox(label="Prediction 1"),

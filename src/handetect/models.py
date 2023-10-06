@@ -39,4 +39,3 @@ from torchvision.models import efficientnet_v2_m
 from torchvision.models import efficientnet_v2_l
 from torchvision.models import efficientnet_b0
 from torchvision.models import efficientnet_b1
-
