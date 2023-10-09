@@ -24,7 +24,6 @@ from torchvision.models import (
 )
 
 import torch.nn.functional as F
-from pytorchcv.model_provider import get_model as ptcv_get_model
 
 # Constants
 RANDOM_SEED = 123
