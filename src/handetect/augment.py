@@ -5,7 +5,7 @@ from configs import *
 import uuid
 
 tasks = ["1", "2", "3", "4", "5", "6"]
-num_of_images = 200
+num_of_images = 100
 
 shutil.rmtree(TEMP_DATA_DIR, ignore_errors=True)
 

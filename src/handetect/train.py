@@ -12,13 +12,14 @@ import numpy as np
 from torchcontrib.optim import SWA
 
 SWA_START = 5  # Starting epoch for SWA
-SWA_FREQ = 5   # Frequency of updating SWA weights
+SWA_FREQ = 5  # Frequency of updating SWA weights
+
 
 def rand_bbox(size, lam):
     W = size[2]
     H = size[3]
-    cut_rat = np.sqrt(1. - lam)
-    cut_w = np.int_(W * cut_rat)  
+    cut_rat = np.sqrt(1.0 - lam)
+    cut_w = np.int_(W * cut_rat)
     cut_h = np.int_(H * cut_rat)
 
     # uniform
@@ -31,6 +32,7 @@ def rand_bbox(size, lam):
     bby2 = np.clip(cy + cut_h // 2, 0, H)
 
     return bbx1, bby1, bbx2, bby2
+
 
 def cutmix_data(input, target, alpha=1.0):
     if alpha > 0:
@@ -51,18 +53,20 @@ def cutmix_data(input, target, alpha=1.0):
 
     return input, targets_a, targets_b, lam
 
+
 def cutmix_criterion(criterion, outputs, targets_a, targets_b, lam):
-    return lam * criterion(outputs, targets_a) + (1 - lam) * criterion(outputs, targets_b)
+    return lam * criterion(outputs, targets_a) + (1 - lam) * criterion(
+        outputs, targets_b
+    )
 
 
 def setup_tensorboard():
     return SummaryWriter(log_dir="output/tensorboard/training")
 
+
 def load_and_preprocess_data():
     return data_loader.load_data(
-        RAW_DATA_DIR + str(TASK),
-        AUG_DATA_DIR + str(TASK),
-        EXTERNAL_DATA_DIR + str(TASK),
+        COMBINED_DATA_DIR + "1",
         preprocess,
     )
 
@@ -91,7 +95,7 @@ def train_one_epoch(model, criterion, optimizer, train_loader, epoch, alpha):
         optimizer.zero_grad()
 
         # Apply CutMix
-        inputs, targets_a, targets_b, lam = cutmix_data(inputs, labels,alpha=1)
+        inputs, targets_a, targets_b, lam = cutmix_data(inputs, labels, alpha=1)
 
         outputs = model(inputs)
 
@@ -101,7 +105,7 @@ def train_one_epoch(model, criterion, optimizer, train_loader, epoch, alpha):
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-        
+
         if (i + 1) % NUM_PRINT == 0:
             print(
                 f"[Epoch {epoch + 1}, Batch {i + 1}/{len(train_loader)}] "
@@ -170,9 +174,9 @@ def main_training_loop():
             "Accuracy": train_accuracy,
         }
         plot_and_log_metrics(train_metrics, epoch, writer=writer, prefix="Train")
-        
+
         # Learning rate scheduling
-        
+
         if epoch < WARMUP_EPOCHS:
             # Linear warm-up phase
             lr = LEARNING_RATE * (epoch + 1) / WARMUP_EPOCHS

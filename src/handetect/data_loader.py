@@ -3,20 +3,13 @@ from torchvision.datasets import ImageFolder
 from torch.utils.data import random_split, DataLoader, Dataset
 
 
-def load_data(raw_dir, augmented_dir, external_dir, preprocess, batch_size=BATCH_SIZE):
-    # Load the dataset using ImageFolder
-    raw_dataset = ImageFolder(root=raw_dir, transform=preprocess)
-    external_dataset = ImageFolder(root=external_dir, transform=preprocess)
-    augmented_dataset = ImageFolder(root=augmented_dir, transform=preprocess)
-    dataset = raw_dataset + external_dataset + augmented_dataset
+def load_data(combined_dir, preprocess, batch_size=BATCH_SIZE):
+    dataset = ImageFolder(combined_dir, transform=preprocess)
 
     # Classes
-    classes = augmented_dataset.classes
+    classes = dataset.classes
 
     print("Classes: ", *classes, sep=", ")
-    print("Length of raw dataset: ", len(raw_dataset))
-    print("Length of external dataset: ", len(external_dataset))
-    print("Length of augmented dataset: ", len(augmented_dataset))
     print("Length of total dataset: ", len(dataset))
 
     # Split the dataset into train and validation sets

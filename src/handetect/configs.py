@@ -29,11 +29,12 @@ import torch.nn.functional as F
 RANDOM_SEED = 123
 BATCH_SIZE = 16
 NUM_EPOCHS = 100
-LEARNING_RATE = 5.8196208148896214e-05
+LEARNING_RATE = 0.00011711415621503923
 STEP_SIZE = 10
-GAMMA = 0.6
+GAMMA = 0.7
 CUTMIX_ALPHA = 0.3
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cpu")
 NUM_PRINT = 100
 TASK = 1
 WARMUP_EPOCHS = 5
@@ -57,20 +58,20 @@ CLASSES = [
 
 
 class SE_Block(nn.Module):
-    def __init__(self, channel, r=16):
-        super().__init__()
-        self.squeeze = nn.AdaptiveAvgPool2d(1)
-        self.excitation = nn.Sequential(
-            nn.Linear(channel, channel // r, bias=False),
+    def __init__(self, channel, reduction=16):
+        super(SE_Block, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False),
             nn.ReLU(inplace=True),
-            nn.Linear(channel // r, channel, bias=False),
-            nn.Sigmoid(),
+            nn.Linear(channel // reduction, channel, bias=False),
+            nn.Sigmoid(),  # Sigmoid activation to produce attention scores
         )
 
     def forward(self, x):
-        bs, c, _, _ = x.shape
-        y = self.squeeze(x).view(bs, c)
-        y = self.excitation(y).view(bs, c, 1, 1)
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
         return x * y.expand_as(x)
 
 
@@ -107,7 +108,7 @@ class SqueezeNet1_0WithSE(nn.Module):
 
 
 class SqueezeNet1_1WithSE(nn.Module):
-    def __init__(self, num_classes, dropout_prob=0.5):
+    def __init__(self, num_classes, dropout_prob=0.2):
         super(SqueezeNet1_1WithSE, self).__init__()
         squeezenet = squeezenet1_1(weights=SqueezeNet1_1_Weights.DEFAULT)
         self.features = squeezenet.features
@@ -134,12 +135,12 @@ class SqueezeNet1_1WithSE(nn.Module):
 
 
 class EfficientNetB2WithDropout(nn.Module):
-    def __init__(self, num_classes, dropout_prob=0.5):
+    def __init__(self, num_classes, dropout_prob=0.2):
         super(EfficientNetB2WithDropout, self).__init__()
-        efficientnet = efficientnet_b0(weights=EfficientNet_B0_Weights.DEFAULT)
+        efficientnet = efficientnet_b2(weights=EfficientNet_B2_Weights.DEFAULT)
         self.features = efficientnet.features
         self.classifier = nn.Sequential(
-            nn.Conv2d(1280, num_classes, kernel_size=1),
+            nn.Conv2d(1408, num_classes, kernel_size=1),
             nn.BatchNorm2d(num_classes),  # add batch normalization
             nn.ReLU(inplace=True),
             nn.AdaptiveAvgPool2d((1, 1)),
@@ -157,7 +158,7 @@ class EfficientNetB2WithDropout(nn.Module):
 
 
 class SqueezeNet1_0WithDropout(nn.Module):
-    def __init__(self, num_classes, dropout_prob=0.5):
+    def __init__(self, num_classes, dropout_prob=0.2):
         super(SqueezeNet1_0WithDropout, self).__init__()
         squeezenet = squeezenet1_0(weights=SqueezeNet1_0_Weights.DEFAULT)
         self.features = squeezenet.features
@@ -205,12 +206,12 @@ class ResNet18WithNorm(nn.Module):
         return x
 
 
-MODEL = EfficientNetB2WithDropout(num_classes=NUM_CLASSES, dropout_prob=0.5)
+MODEL = EfficientNetB2WithDropout(num_classes=NUM_CLASSES)
 MODEL_SAVE_PATH = r"output/checkpoints/" + MODEL.__class__.__name__ + ".pth"
 
 preprocess = transforms.Compose(
     [
-        transforms.Resize((112, 112)),  # Resize to 112x112
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),  # Convert to tensor
         transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
         # Normalize 3 channels

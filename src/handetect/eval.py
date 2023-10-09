@@ -15,7 +15,6 @@ from sklearn.metrics import (
 from sklearn.preprocessing import label_binarize
 from torchvision import transforms
 from configs import *
-from data_loader import load_data  # Import the load_data function
 
 # Constants
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

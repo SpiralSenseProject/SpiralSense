@@ -11,9 +11,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 torch.cuda.empty_cache()
 
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 10
-N_TRIALS = 21600
+N_TRIALS = 30
 TIMEOUT = 21600
 EARLY_STOPPING_PATIENCE = (
     4  # Number of epochs with no improvement to trigger early stopping
@@ -27,9 +26,7 @@ writer = SummaryWriter(log_dir="output/tensorboard/tuning")
 # Function to create or modify data loaders with the specified batch size
 def create_data_loaders(batch_size):
     train_loader, valid_loader = data_loader.load_data(
-        RAW_DATA_DIR + str(TASK),
-        AUG_DATA_DIR + str(TASK),
-        EXTERNAL_DATA_DIR + str(TASK),
+        COMBINED_DATA_DIR + "1",
         preprocess,
         batch_size=batch_size,
     )
@@ -37,7 +34,7 @@ def create_data_loaders(batch_size):
 
 
 # Objective function for optimization
-def objective(trial, model=model):
+def objective(trial, model=MODEL):
     model = model.to(DEVICE)
     batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
     train_loader, valid_loader = create_data_loaders(batch_size)
@@ -48,6 +45,13 @@ def objective(trial, model=model):
 
     gamma = trial.suggest_float("gamma", 0.1, 0.9, step=0.1)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+
+    past_trials = 0  # Number of trials already completed
+
+    # Print best hyperparameters:
+    if past_trials > 0:
+        print("\nBest Hyperparameters:")
+        print(f"{study.best_trial.params}")
 
     print(f"\n[INFO] Trial: {trial.number}")
     print(f"Batch Size: {batch_size}")
@@ -107,6 +111,8 @@ def objective(trial, model=model):
 
     if trial.number > 10 and trial.params["lr"] < 1e-3 and best_accuracy < 0.7:
         return float("inf")
+
+    past_trials += 1
 
     return best_accuracy
 
