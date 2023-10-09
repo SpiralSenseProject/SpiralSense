@@ -10,16 +10,16 @@ from configs import *
 
 
 # Load your model (change this according to your model definition)
-MODEL.load_state_dict(
+model.load_state_dict(
     torch.load(MODEL_SAVE_PATH, map_location=DEVICE)
 )  # Load the model on the same device
-MODEL.eval()
-MODEL = MODEL.to(DEVICE)
-MODEL.eval()
+model.eval()
+model = model.to(DEVICE)
+model.eval()
 torch.set_grad_enabled(False)
 
 
-def predict_image(image_path, model=MODEL, transform=preprocess):
+def predict_image(image_path, model=model, transform=preprocess):
     classes = CLASSES
 
     print("---------------------------")

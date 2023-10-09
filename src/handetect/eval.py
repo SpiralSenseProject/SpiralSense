@@ -22,9 +22,9 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_AUGMENTATIONS = 10  # Number of augmentations to perform
 
 # Load the model
-MODEL = MODEL.to(DEVICE)
-MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
-MODEL.eval()
+model = MODEL.to(DEVICE)
+model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model.eval()
 
 # define augmentations for TTA
 tta_transforms = transforms.Compose(
@@ -138,6 +138,13 @@ def predict_image_with_tta(image_path, model, transform, tta_transforms):
     print("Ensemble Accuracy:", accuracy_ensemble)
     print("Ensemble Weighted F1 Score:", f1_ensemble)
 
+    # Classification report
+    class_names = [str(cls) for cls in range(NUM_CLASSES)]
+    report = classification_report(
+        true_classes, final_predicted_labels, target_names=class_names
+    )
+    print("Classification Report of", MODEL.__class__.__name__, ":\n", report)
+    
     # confusion matrix and classification report for the ensemble
     conf_matrix_ensemble = confusion_matrix(true_classes, final_predicted_labels)
     ConfusionMatrixDisplay(
@@ -152,19 +159,18 @@ def predict_image_with_tta(image_path, model, transform, tta_transforms):
     )
     print("Classification Report (Ensemble):\n", report_ensemble)
 
-    # calculate precision and recall yo
+    # Calculate precision and recall for each class
     true_classes_binary = label_binarize(true_classes, classes=range(NUM_CLASSES))
-    precision_ensemble, recall_ensemble, _ = precision_recall_curve(
+    precision, recall, _ = precision_recall_curve(
         true_classes_binary.ravel(), np.array(final_predicted_scores_rotation).ravel()
     )
 
-    # plot precision-recall curve for the ensemble
+    # Plot precision-recall curve
     plt.figure(figsize=(10, 6))
-    plt.plot(recall_ensemble, precision_ensemble)
-    plt.title("Precision-Recall Curve (Ensemble)")
+    plt.plot(recall, precision)
+    plt.title("Precision-Recall Curve")
     plt.xlabel("Recall")
     plt.ylabel("Precision")
     plt.show()
 
-
-predict_image_with_tta("data/test/Task 1/", MODEL, preprocess, tta_transforms)
+predict_image_with_tta("data/test/Task 1/", model, preprocess, tta_transforms)

@@ -37,6 +37,7 @@ CUTMIX_ALPHA = 0.3
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_PRINT = 100
 TASK = 1
+WARMUP_EPOCHS = 5
 RAW_DATA_DIR = r"data/train/raw/Task "
 AUG_DATA_DIR = r"data/train/augmented/Task "
 EXTERNAL_DATA_DIR = r"data/train/external/Task "
@@ -152,6 +153,55 @@ class EfficientNetB2WithDropout(nn.Module):
         x = self.features(x)
         x = self.classifier(x)
         x = F.dropout(x, training=self.training)  # Apply dropout during training
+        x = torch.flatten(x, 1)
+        return x
+
+
+class SqueezeNet1_0WithDropout(nn.Module):
+    def __init__(self, num_classes, dropout_prob=0.5):
+        super(SqueezeNet1_0WithDropout, self).__init__()
+        squeezenet = squeezenet1_0(weights=SqueezeNet1_0_Weights.DEFAULT)
+        self.features = squeezenet.features
+        self.classifier = nn.Sequential(
+            nn.Conv2d(512, num_classes, kernel_size=1),
+            nn.BatchNorm2d(num_classes),  # add batch normalization
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1)),
+        )
+        self.dropout = nn.Dropout(
+            dropout_prob
+        )  # Add dropout layer with the specified probability
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        x = F.dropout(x, training=self.training)  # Apply dropout during training
+        x = torch.flatten(x, 1)
+        return x
+
+
+class ResNet18WithNorm(nn.Module):
+    def __init__(self, num_classes=1000):
+        super(ResNet18WithNorm, self).__init__()
+        resnet = resnet18(pretrained=False)
+
+        # Remove the last block (Block 4)
+        self.features = nn.Sequential(
+            *list(resnet.children())[:-1]  # Exclude the last block
+        )
+
+        self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten(),
+            nn.Linear(
+                512, num_classes
+            ),  # Adjust input size for the fully connected layer
+            nn.BatchNorm1d(num_classes),  # Add batch normalization
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
         x = torch.flatten(x, 1)
         return x
 

@@ -3,7 +3,7 @@ import onnx2tf
 from configs import *
 
 torch.onnx.export(
-    model=MODEL,
+    model=model,
     args=torch.randn(1, 3, 64, 64),
     f="output/checkpoints/model.onnx",
     verbose=True,

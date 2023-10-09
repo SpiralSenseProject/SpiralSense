@@ -5,9 +5,9 @@ import torchvision.transforms as transforms
 from configs import *
 
 # Load a pre-trained model (e.g., VGG16)
-MODEL = MODEL.to(DEVICE)
-MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
-MODEL.eval()
+model = model.to(DEVICE)
+model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model.eval()
 
 # Prepare an initial image (e.g., a random noise image)
 image = torch.randn(1, 3, 224, 224, requires_grad=True).cuda()
@@ -21,7 +21,7 @@ optimizer = optim.Adam([image], lr=0.01)
 # Optimization loop
 for _ in range(1000):
     optimizer.zero_grad()
-    output = MODEL(image)
+    output = model(image)
     loss = -output[0, 'Healthy']  # Maximize the activation of a specific class
     loss.backward()
     optimizer.step()

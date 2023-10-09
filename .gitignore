@@ -12,4 +12,8 @@ output/tensorboard/*
 temp/
 .venv/
 data/*
+cam.jpg
+optimized_image.jpg
+training_curves.png
+.vscode/
 ```

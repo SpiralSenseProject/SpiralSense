@@ -9,79 +9,54 @@ from configs import *
 import data_loader
 import torch.nn.functional as F
 import numpy as np
+from torchcontrib.optim import SWA
 
-
-class LabelSmoothingLoss(nn.Module):
-    def __init__(self, epsilon=0.1, num_classes=7):
-        super(LabelSmoothingLoss, self).__init__()
-        self.epsilon = epsilon
-        self.num_classes = num_classes
-
-    def forward(self, input, target):
-        target_smooth = (1 - self.epsilon) * target + self.epsilon / self.num_classes
-        return nn.CrossEntropyLoss()(input, target_smooth)
-
+SWA_START = 5  # Starting epoch for SWA
+SWA_FREQ = 5   # Frequency of updating SWA weights
 
 def rand_bbox(size, lam):
     W = size[2]
     H = size[3]
-    cut_rat = np.sqrt(1.0 - lam)
-    cut_w = np.int_(W * cut_rat)
+    cut_rat = np.sqrt(1. - lam)
+    cut_w = np.int_(W * cut_rat)  
     cut_h = np.int_(H * cut_rat)
+
     # uniform
     cx = np.random.randint(W)
     cy = np.random.randint(H)
+
     bbx1 = np.clip(cx - cut_w // 2, 0, W)
     bby1 = np.clip(cy - cut_h // 2, 0, H)
     bbx2 = np.clip(cx + cut_w // 2, 0, W)
     bby2 = np.clip(cy + cut_h // 2, 0, H)
-    return bbx1, bby1, bbx2, bby2
 
+    return bbx1, bby1, bbx2, bby2
 
 def cutmix_data(input, target, alpha=1.0):
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
     else:
         lam = 1
+
     batch_size = input.size()[0]
     index = torch.randperm(batch_size)
     rand_index = torch.randperm(input.size()[0])
+
     bbx1, bby1, bbx2, bby2 = rand_bbox(input.size(), lam)
     input[:, :, bbx1:bbx2, bby1:bby2] = input[rand_index, :, bbx1:bbx2, bby1:bby2]
+
     lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (input.size()[-1] * input.size()[-2]))
     targets_a = target
     targets_b = target[rand_index]
+
     return input, targets_a, targets_b, lam
 
-
 def cutmix_criterion(criterion, outputs, targets_a, targets_b, lam):
-    return lam * criterion(outputs, targets_a) + (1 - lam) * criterion(
-        outputs, targets_b
-    )
+    return lam * criterion(outputs, targets_a) + (1 - lam) * criterion(outputs, targets_b)
 
 
 def setup_tensorboard():
     return SummaryWriter(log_dir="output/tensorboard/training")
-
-
-def mixup_data(x, y, alpha=1.0):
-    """Returns mixed inputs, pairs of targets, and lambda"""
-    if alpha > 0:
-        lam = np.random.beta(alpha, alpha)
-    else:
-        lam = 1
-
-    batch_size = x.size()[0]
-    index = torch.randperm(batch_size)
-
-    mixed_x = lam * x + (1 - lam) * x[index, :]
-    y_a, y_b = y, y[index]
-    return mixed_x, y_a, y_b, lam
-
-
-def mixup_criterion(criterion, pred, y_a, y_b, lam):
-    return lam * criterion(pred, y_a) + (1 - lam) * criterion(pred, y_b)
-
 
 def load_and_preprocess_data():
     return data_loader.load_data(
@@ -116,15 +91,17 @@ def train_one_epoch(model, criterion, optimizer, train_loader, epoch, alpha):
         optimizer.zero_grad()
 
         # Apply CutMix
-        inputs, targets_a, targets_b, lam = cutmix_data(inputs, labels, alpha=1)
+        inputs, targets_a, targets_b, lam = cutmix_data(inputs, labels,alpha=1)
+
         outputs = model(inputs)
+
         # Calculate CutMix loss
         loss = cutmix_criterion(criterion, outputs, targets_a, targets_b, lam)
 
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-
+        
         if (i + 1) % NUM_PRINT == 0:
             print(
                 f"[Epoch {epoch + 1}, Batch {i + 1}/{len(train_loader)}] "
@@ -174,6 +151,9 @@ def main_training_loop():
     TRAIN_ACC_HIST = []
     VAL_ACC_HIST = []
 
+    # Initialize SWA optimizer
+    swa_optimizer = SWA(optimizer, swa_start=SWA_START, swa_freq=SWA_FREQ)
+
     for epoch in range(NUM_EPOCHS):
         print(f"\n[Epoch: {epoch + 1}/{NUM_EPOCHS}]")
         print("Learning rate:", scheduler.get_last_lr()[0])
@@ -190,9 +170,17 @@ def main_training_loop():
             "Accuracy": train_accuracy,
         }
         plot_and_log_metrics(train_metrics, epoch, writer=writer, prefix="Train")
-
+        
         # Learning rate scheduling
-        scheduler.step()
+        
+        if epoch < WARMUP_EPOCHS:
+            # Linear warm-up phase
+            lr = LEARNING_RATE * (epoch + 1) / WARMUP_EPOCHS
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = lr
+        else:
+            # Cosine annealing scheduler after warm-up
+            scheduler.step()
 
         avg_val_loss, val_accuracy = validate_model(model, criterion, valid_loader)
         AVG_VAL_LOSS_HIST.append(avg_val_loss)
@@ -227,6 +215,13 @@ def main_training_loop():
             )
             break
 
+        # Update SWA weights
+        if epoch >= SWA_START and epoch % SWA_FREQ == 0:
+            swa_optimizer.update_swa()
+
+    # Apply SWA to the final model weights
+    swa_optimizer.swap_swa_sgd()
+    MODEL_SAVE_PATH = "output/checkpoints/model.pth"
     # Ensure the parent directory exists
     os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
     torch.save(model.state_dict(), MODEL_SAVE_PATH)
