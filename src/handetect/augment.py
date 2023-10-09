@@ -5,12 +5,13 @@ from configs import *
 import uuid
 
 tasks = ["1", "2", "3", "4", "5", "6"]
+num_of_images = 200
 
-shutil.rmtree(TEMP_DATA_DIR)
+shutil.rmtree(TEMP_DATA_DIR, ignore_errors=True)
 
 
 for task in ["1"]:
-    shutil.rmtree(AUG_DATA_DIR + task)
+    shutil.rmtree(AUG_DATA_DIR + task, ignore_errors=True)
     # Loop through all folders in Task 1 and generate augmented images for each class
     for class_label in [
         "Alzheimer Disease",
@@ -50,8 +51,7 @@ for task in ["1"]:
             p.random_contrast(probability=0.8, min_factor=0.5, max_factor=1.5)
             p.random_color(probability=0.8, min_factor=0.5, max_factor=1.5)
             p.rotate_random_90(probability=0.8)
-            # Generate 100 - total of original images so that the total number of images in each class is 100
-            p.sample(100 - len(p.augmentor_images))
+            p.sample(num_of_images - len(p.augmentor_images))
             # Move the folder to data/train/Task 1/augmented
             # Create the folder if it does not exist
             if not os.path.exists(f"{AUG_DATA_DIR}{task}/"):

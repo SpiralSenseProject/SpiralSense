@@ -22,6 +22,44 @@ class LabelSmoothingLoss(nn.Module):
         return nn.CrossEntropyLoss()(input, target_smooth)
 
 
+def rand_bbox(size, lam):
+    W = size[2]
+    H = size[3]
+    cut_rat = np.sqrt(1.0 - lam)
+    cut_w = np.int_(W * cut_rat)
+    cut_h = np.int_(H * cut_rat)
+    # uniform
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+    return bbx1, bby1, bbx2, bby2
+
+
+def cutmix_data(input, target, alpha=1.0):
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+    batch_size = input.size()[0]
+    index = torch.randperm(batch_size)
+    rand_index = torch.randperm(input.size()[0])
+    bbx1, bby1, bbx2, bby2 = rand_bbox(input.size(), lam)
+    input[:, :, bbx1:bbx2, bby1:bby2] = input[rand_index, :, bbx1:bbx2, bby1:bby2]
+    lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (input.size()[-1] * input.size()[-2]))
+    targets_a = target
+    targets_b = target[rand_index]
+    return input, targets_a, targets_b, lam
+
+
+def cutmix_criterion(criterion, outputs, targets_a, targets_b, lam):
+    return lam * criterion(outputs, targets_a) + (1 - lam) * criterion(
+        outputs, targets_b
+    )
+
+
 def setup_tensorboard():
     return SummaryWriter(log_dir="output/tensorboard/training")
 
@@ -77,13 +115,11 @@ def train_one_epoch(model, criterion, optimizer, train_loader, epoch, alpha):
         inputs, labels = inputs.to(DEVICE), labels.to(DEVICE)
         optimizer.zero_grad()
 
-        # Apply mixup
-        inputs, targets_a, targets_b, lam = mixup_data(inputs, labels, alpha)
-
+        # Apply CutMix
+        inputs, targets_a, targets_b, lam = cutmix_data(inputs, labels, alpha=1)
         outputs = model(inputs)
-
-        # Calculate mixup loss
-        loss = mixup_criterion(criterion, outputs, targets_a, targets_b, lam)
+        # Calculate CutMix loss
+        loss = cutmix_criterion(criterion, outputs, targets_a, targets_b, lam)
 
         loss.backward()
         optimizer.step()
@@ -143,7 +179,7 @@ def main_training_loop():
         print("Learning rate:", scheduler.get_last_lr()[0])
 
         avg_train_loss, train_accuracy = train_one_epoch(
-            model, criterion, optimizer, train_loader, epoch, MIXUP_ALPHA
+            model, criterion, optimizer, train_loader, epoch, CUTMIX_ALPHA
         )
         AVG_TRAIN_LOSS_HIST.append(avg_train_loss)
         TRAIN_ACC_HIST.append(train_accuracy)
@@ -191,7 +227,6 @@ def main_training_loop():
             )
             break
 
-    MODEL_SAVE_PATH = "output/checkpoints/model.pth"
     # Ensure the parent directory exists
     os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
     torch.save(model.state_dict(), MODEL_SAVE_PATH)

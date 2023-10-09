@@ -9,14 +9,20 @@ from configs import *
 import data_loader
 from torch.utils.tensorboard import SummaryWriter
 
+torch.cuda.empty_cache()
+
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EPOCHS = 10
-N_TRIALS = 1000
-TIMEOUT = 3600
-EARLY_STOPPING_PATIENCE = 5  # Number of epochs with no improvement to trigger early stopping
+N_TRIALS = 21600
+TIMEOUT = 21600
+EARLY_STOPPING_PATIENCE = (
+    4  # Number of epochs with no improvement to trigger early stopping
+)
+
 
 # Create a TensorBoard writer
 writer = SummaryWriter(log_dir="output/tensorboard/tuning")
+
 
 # Function to create or modify data loaders with the specified batch size
 def create_data_loaders(batch_size):
@@ -28,6 +34,7 @@ def create_data_loaders(batch_size):
         batch_size=batch_size,
     )
     return train_loader, valid_loader
+
 
 # Objective function for optimization
 def objective(trial, model=MODEL):
@@ -102,6 +109,7 @@ def objective(trial, model=MODEL):
         return float("inf")
 
     return best_accuracy
+
 
 if __name__ == "__main__":
     pruner = optuna.pruners.HyperbandPruner()
