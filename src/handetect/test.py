@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 from configs import *
 
 # Load a pre-trained model (e.g., VGG16)
-model = model.to(DEVICE)
+model = MODEL.to(DEVICE)
 model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
 model.eval()
 

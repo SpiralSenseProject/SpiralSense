@@ -10,11 +10,11 @@ from configs import *
 
 
 # Load your model (change this according to your model definition)
-model.load_state_dict(
+MODEL.load_state_dict(
     torch.load(MODEL_SAVE_PATH, map_location=DEVICE)
 )  # Load the model on the same device
-model.eval()
-model = model.to(DEVICE)
+MODEL.eval()
+model = MODEL.to(DEVICE)
 model.eval()
 torch.set_grad_enabled(False)
 

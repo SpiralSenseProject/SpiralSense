@@ -21,20 +21,28 @@ from torchvision.models import (
     EfficientNet_B1_Weights,
     efficientnet_b2,
     EfficientNet_B2_Weights,
+    efficientnet_b3,
+    EfficientNet_B3_Weights,
+    mobilenet_v3_small,
+    MobileNet_V3_Small_Weights,
+    mobilenet_v3_large,
+    MobileNet_V3_Large_Weights,
+    googlenet,
+    GoogLeNet_Weights,
 )
 
 import torch.nn.functional as F
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 NUM_EPOCHS = 100
-LEARNING_RATE = 0.00011711415621503923
+LEARNING_RATE = 3.617930105699311e-05
 STEP_SIZE = 10
-GAMMA = 0.7
+GAMMA = 0.3
 CUTMIX_ALPHA = 0.3
-# DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-DEVICE = torch.device("cpu")
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# DEVICE = torch.device("cpu")
 NUM_PRINT = 100
 TASK = 1
 WARMUP_EPOCHS = 5
@@ -135,6 +143,7 @@ class SqueezeNet1_1WithSE(nn.Module):
 
 
 class EfficientNetB2WithDropout(nn.Module):
+    #  0.00022015769999619205
     def __init__(self, num_classes, dropout_prob=0.2):
         super(EfficientNetB2WithDropout, self).__init__()
         efficientnet = efficientnet_b2(weights=EfficientNet_B2_Weights.DEFAULT)
@@ -157,13 +166,13 @@ class EfficientNetB2WithDropout(nn.Module):
         return x
 
 
-class SqueezeNet1_0WithDropout(nn.Module):
+class EfficientNetB3WithDropout(nn.Module):
     def __init__(self, num_classes, dropout_prob=0.2):
-        super(SqueezeNet1_0WithDropout, self).__init__()
-        squeezenet = squeezenet1_0(weights=SqueezeNet1_0_Weights.DEFAULT)
-        self.features = squeezenet.features
+        super(EfficientNetB3WithDropout, self).__init__()
+        efficientnet = efficientnet_b3(weights=EfficientNet_B3_Weights.DEFAULT)
+        self.features = efficientnet.features
         self.classifier = nn.Sequential(
-            nn.Conv2d(512, num_classes, kernel_size=1),
+            nn.Conv2d(1536, num_classes, kernel_size=1),
             nn.BatchNorm2d(num_classes),  # add batch normalization
             nn.ReLU(inplace=True),
             nn.AdaptiveAvgPool2d((1, 1)),
@@ -206,9 +215,55 @@ class ResNet18WithNorm(nn.Module):
         return x
 
 
-MODEL = EfficientNetB2WithDropout(num_classes=NUM_CLASSES)
-MODEL_SAVE_PATH = r"output/checkpoints/" + MODEL.__class__.__name__ + ".pth"
+class MobileNetV3LargeWithDropout(nn.Module):
+    def __init__(self, num_classes, dropout_prob=0.2):
+        super(MobileNetV3LargeWithDropout, self).__init__()
+        mobilenet = mobilenet_v3_large(weights=MobileNet_V3_Large_Weights.DEFAULT)
+        self.features = mobilenet.features
+        self.classifier = nn.Sequential(
+            nn.Conv2d(960, num_classes, kernel_size=1),
+            nn.BatchNorm2d(num_classes),  # add batch normalization
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1)),
+        )
+        self.dropout = nn.Dropout(
+            dropout_prob
+        )  # Add dropout layer with the specified probability
 
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        x = F.dropout(x, training=self.training)  # Apply dropout during training
+        x = torch.flatten(x, 1)
+        return x
+
+
+class GoogLeNetWithSE(nn.Module):
+    def __init__(self, num_classes):
+        super(GoogLeNetWithSE, self).__init__()
+        googlenet = googlenet(weights=GoogLeNet_Weights.DEFAULT)
+        # self.features = googlenet.features
+        self.classifier = nn.Sequential(
+            nn.Conv2d(1024, num_classes, kernel_size=1),
+            nn.BatchNorm2d(num_classes),  # add batch normalization
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1)),
+        )
+
+        # Add Squeeze-and-Excitation block
+        self.se_block = SE_Block(channel=num_classes)  # Adjust channel as needed
+
+    def forward(self, x):
+        # x = self.features(x)
+        x = self.classifier(x)
+        x = self.se_block(x)  # Apply the SE block
+        x = torch.flatten(x, 1)
+        return x
+
+
+MODEL = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES)
+MODEL_SAVE_PATH = r"output/checkpoints/" + MODEL.__class__.__name__ + ".pth"
+# MODEL_SAVE_PATH = r"C:\Users\User\Downloads\bestsqueezenetSE.pth"
 preprocess = transforms.Compose(
     [
         transforms.Resize((224, 224)),

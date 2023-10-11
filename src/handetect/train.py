@@ -225,7 +225,6 @@ def main_training_loop():
 
     # Apply SWA to the final model weights
     swa_optimizer.swap_swa_sgd()
-    MODEL_SAVE_PATH = "output/checkpoints/model.pth"
     # Ensure the parent directory exists
     os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
     torch.save(model.state_dict(), MODEL_SAVE_PATH)

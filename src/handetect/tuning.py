@@ -12,8 +12,8 @@ from torch.utils.tensorboard import SummaryWriter
 torch.cuda.empty_cache()
 
 EPOCHS = 10
-N_TRIALS = 30
-TIMEOUT = 21600
+N_TRIALS = 20
+TIMEOUT = 1800
 EARLY_STOPPING_PATIENCE = (
     4  # Number of epochs with no improvement to trigger early stopping
 )

@@ -1,4 +1,4 @@
-from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM, EigenGradCAM
+from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM, EigenGradCAM, LayerCAM, FullGrad
 from pytorch_grad_cam.utils.image import show_cam_on_image, \
                                          deprocess_image, \
                                          preprocess_image
@@ -26,7 +26,8 @@ def find_target_layer(model, target_layer_name):
 target_layer = None
 
 target_layer = None
-for child in model.features[-1]:
+# for child in model.features[-1]:
+for child in model.features:
     if isinstance(child, nn.Conv2d):
         target_layer = child
 # Verify that you have the correct layer
@@ -36,9 +37,9 @@ print(target_layer)
 #VGG and densenet161: model.features[-1]
 #mnasnet1_0: model.layers[-1]
 #ViT: model.blocks[-1].norm1
-#SqueezeNet1_0: model.features[-1]
+#SqueezeNet1_0: model.features
 
-image_path = r'data\train\external\Task 1\Essential Tremor\07.png'
+image_path = r'data\train\external\Task 1\Essential Tremor\03.png'
 rgb_img = cv2.imread(image_path, 1)[:, :, ::-1]   
                                                  
 rgb_img = cv2.imread(image_path, 1) 
@@ -53,7 +54,7 @@ input_tensor = input_tensor.to(DEVICE)
 # Note: input_tensor can be a batch tensor with several images
 
 # Construct the CAM object once, and then re-use it on many images:
-cam = GradCAMPlusPlus(model=model, target_layers=[target_layer], use_cuda=True)
+cam = FullGrad(model=model, target_layers=[target_layer], use_cuda=True)
 
 # You can also pass aug_smooth=True and eigen_smooth=True, to apply smoothing.
 grayscale_cam = cam(input_tensor=input_tensor)  # [batch, 224,224]

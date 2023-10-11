@@ -27,3 +27,13 @@ def load_data(combined_dir, preprocess, batch_size=BATCH_SIZE):
 
     return train_loader, valid_loader
 
+
+def load_test_data(test_dir, preprocess, batch_size=BATCH_SIZE):
+    test_dataset = ImageFolder(test_dir, transform=preprocess)
+
+    # Create a DataLoader for the test data
+    test_dataloader = DataLoader(
+        CustomDataset(test_dataset), batch_size=batch_size, shuffle=False, num_workers=0
+    )
+
+    return test_dataloader
