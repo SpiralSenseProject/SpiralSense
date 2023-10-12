@@ -22,8 +22,6 @@ def find_target_layer(model, target_layer_name):
             return layer
     return None
 
-# Assuming 'model' is an instance of EfficientNetB2WithDropout
-target_layer = None
 
 target_layer = None
 # for child in model.features[-1]:
@@ -39,7 +37,7 @@ print(target_layer)
 #ViT: model.blocks[-1].norm1
 #SqueezeNet1_0: model.features
 
-image_path = r'data\train\external\Task 1\Essential Tremor\03.png'
+image_path = r'data\train\raw\Task 1\Cerebral Palsy\02.png'
 rgb_img = cv2.imread(image_path, 1)[:, :, ::-1]   
                                                  
 rgb_img = cv2.imread(image_path, 1) 
@@ -54,7 +52,7 @@ input_tensor = input_tensor.to(DEVICE)
 # Note: input_tensor can be a batch tensor with several images
 
 # Construct the CAM object once, and then re-use it on many images:
-cam = FullGrad(model=model, target_layers=[target_layer], use_cuda=True)
+cam = EigenCAM(model=model, target_layers=[target_layer], use_cuda=True)
 
 # You can also pass aug_smooth=True and eigen_smooth=True, to apply smoothing.
 grayscale_cam = cam(input_tensor=input_tensor)  # [batch, 224,224]

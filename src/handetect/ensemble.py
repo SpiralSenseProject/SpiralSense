@@ -9,10 +9,14 @@ import matplotlib.pyplot as plt
 
 # Define your model paths
 # Load your pre-trained models
+model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model3.load_state_dict(torch.load("output/checkpoints/MobileNetV2WithDropout.pth"))
 model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
 model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
 model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
-model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
+model1.load_state_dict(torch.load(r"output/checkpoints/SqueezeNet1_0WithSE.pth"))
+
+models = [model1, model3, model2]
 
 # Define the class labels
 class_labels = CLASSES
@@ -82,7 +86,7 @@ def evaluate_and_plot_confusion_matrix(models, test_data_folder):
     cm = confusion_matrix(true_labels, all_predictions)
 
     # Plot the confusion matrix
-    display = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=class_labels)
+    display = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=range(NUM_CLASSES))
     display.plot(cmap=plt.cm.Blues, values_format="d")
 
     # Show the plot
@@ -90,10 +94,10 @@ def evaluate_and_plot_confusion_matrix(models, test_data_folder):
 
 
 # Set the models to evaluation mode
-set_models_eval([model1, model2])
+set_models_eval(models)
 
 # Create an ensemble model
-ensemble_model = EnsembleModel([model1, model2])
+ensemble_model = EnsembleModel(models)
 
 # Call the evaluate_and_plot_confusion_matrix function with your models and test data folder
 evaluate_and_plot_confusion_matrix([ensemble_model], test_data_folder)

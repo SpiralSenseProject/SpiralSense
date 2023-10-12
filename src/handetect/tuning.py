@@ -13,7 +13,7 @@ torch.cuda.empty_cache()
 
 EPOCHS = 10
 N_TRIALS = 20
-TIMEOUT = 1800
+TIMEOUT = 18000
 EARLY_STOPPING_PATIENCE = (
     4  # Number of epochs with no improvement to trigger early stopping
 )
