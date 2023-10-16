@@ -18,13 +18,37 @@ from sklearn.preprocessing import label_binarize
 from configs import *
 from data_loader import load_data  # Import the load_data function
 
+# MobileNet: 0.8731189445475158
+# EfficientNet: 0.873118944547516
+# SquuezeNet: 0.8865856365856365
+
 # Constants
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Load the model
-MODEL = MODEL.to(DEVICE)
-MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
-MODEL.eval()
+# MODEL = MODEL.to(DEVICE)
+# MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+# MODEL.eval()
+
+model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
+model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
+model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
+model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
+
+model1.eval()
+model2.eval()
+model3.eval()
+
+# Load the model
+model = WeightedVoteEnsemble([model1, model2, model3],[0.37, 0.35, 0.28])
+# model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model.load_state_dict(
+    torch.load("output/checkpoints/WeightedVoteEnsemble.pth", map_location=DEVICE)
+)
+# model.eval()
+
 
 def predict_image(image_path, model, transform):
     model.eval()
@@ -78,7 +102,9 @@ def predict_image(image_path, model, transform):
     conf_matrix = confusion_matrix(true_classes, predicted_labels)
 
     # Plot the confusion matrix
-    ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=CLASSES).plot(cmap=plt.cm.Blues)
+    ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=CLASSES).plot(
+        cmap=plt.cm.Blues
+    )
     plt.title("Confusion Matrix")
     plt.show()
 
@@ -105,4 +131,4 @@ def predict_image(image_path, model, transform):
 
 
 # Call predict_image function with your image path
-predict_image("data/test/Task 1/", MODEL, preprocess)
+predict_image("data/test/Task 1/", model, preprocess)

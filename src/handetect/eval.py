@@ -16,13 +16,28 @@ from sklearn.preprocessing import label_binarize
 from torchvision import transforms
 from configs import *
 
+# EfficientNet: 0.901978973407545
+# MobileNet: 0.8731189445475158
+# SquuezeNet:  0.8559218559218559
+
+
 # Constants
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 NUM_AUGMENTATIONS = 10  # Number of augmentations to perform
 
+model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
+model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
+model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
+model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
+
+best_weights = [0.901978973407545, 0.8731189445475158, 0.8559218559218559]
+
 # Load the model
-model = MODEL.to(DEVICE)
-model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model = WeightedVoteEnsemble([model1, model2, model3], best_weights)
+# model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model.load_state_dict(torch.load('output/checkpoints/WeightedVoteEnsemble.pth', map_location=DEVICE))
 model.eval()
 
 # define augmentations for TTA

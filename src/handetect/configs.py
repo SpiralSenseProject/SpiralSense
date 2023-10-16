@@ -36,9 +36,9 @@ CLASSES = [
 ]
 
 
-MODEL = MobileNetV2WithDropout(num_classes=NUM_CLASSES)
-# MODEL_SAVE_PATH = r"output/checkpoints/" + MODEL.__class__.__name__ + ".pth"
-MODEL_SAVE_PATH = r"C:\Users\User\Downloads\MobileNetV2WithDropout1.pth"
+MODEL = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES)
+MODEL_SAVE_PATH = r"output/checkpoints/" + MODEL.__class__.__name__ + ".pth"
+# MODEL_SAVE_PATH = r"C:\Users\User\Downloads\MobileNetV2WithDropout1.pth"
 preprocess = transforms.Compose(
     [
         transforms.Resize((224, 224)),
@@ -54,6 +54,7 @@ preprocess = transforms.Compose(
 class CustomDataset(Dataset):
     def __init__(self, dataset):
         self.data = dataset
+        self.labels = [label for _, label in self.data]
 
     def __len__(self):
         return len(self.data)

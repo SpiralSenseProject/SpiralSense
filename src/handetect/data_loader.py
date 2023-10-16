@@ -1,7 +1,10 @@
 from configs import *
 from torchvision.datasets import ImageFolder
 from torch.utils.data import random_split, DataLoader, Dataset
+import torch
 
+# Set seed
+torch.manual_seed(RANDOM_SEED)
 
 def load_data(combined_dir, preprocess, batch_size=BATCH_SIZE):
     dataset = ImageFolder(combined_dir, transform=preprocess)
