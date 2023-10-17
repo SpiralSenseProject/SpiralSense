@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 from configs import *
 import data_loader
 import torch.nn.functional as F
+import csv
 import numpy as np
 from torchcontrib.optim import SWA
 
@@ -149,6 +150,7 @@ def main_training_loop():
     best_val_loss = float("inf")
     best_val_accuracy = 0.0
     no_improvement_count = 0
+    epoch_metrics = []
 
     AVG_TRAIN_LOSS_HIST = []
     AVG_VAL_LOSS_HIST = []
@@ -174,6 +176,16 @@ def main_training_loop():
             "Accuracy": train_accuracy,
         }
         plot_and_log_metrics(train_metrics, epoch, writer=writer, prefix="Train")
+        epoch_metrics.append(
+            {
+                "Epoch": epoch + 1,
+                "Train Loss": avg_train_loss,
+                "Train Accuracy": train_accuracy,
+                "Validation Loss": avg_val_loss,
+                "Validation Accuracy": val_accuracy,
+                "Learning Rate": scheduler.get_last_lr()[0],
+            }
+        )
 
         # Learning rate scheduling
 
@@ -225,6 +237,26 @@ def main_training_loop():
 
     # Apply SWA to the final model weights
     swa_optimizer.swap_swa_sgd()
+    csv_filename = "training_metrics.csv"
+
+    with open(csv_filename, mode="w", newline="") as csv_file:
+        fieldnames = [
+            "Epoch",
+            "Train Loss",
+            "Train Accuracy",
+            "Validation Loss",
+            "Validation Accuracy",
+            "Learning Rate",
+        ]
+
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for metric in epoch_metrics:
+            writer.writerow(metric)
+
+    print(f"Metrics saved to {csv_filename}")
+
     # Ensure the parent directory exists
     os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
     torch.save(model.state_dict(), MODEL_SAVE_PATH)

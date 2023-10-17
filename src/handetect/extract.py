@@ -7,13 +7,31 @@ import numpy as np
 import os
 from configs import *
 
-DEVICE = torch.device("cpu")
 # clear cuda cache
 torch.cuda.empty_cache()
 
-model = MODEL.to(DEVICE)
-model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
+model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
+model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
+model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
+
+model1.eval()
+model2.eval()
+model3.eval()
+
+# Load the model
+model = WeightedVoteEnsemble([model1, model2, model3],[0.37, 0.34, 0.29])
+# model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model.load_state_dict(
+    torch.load("output/checkpoints/WeightedVoteEnsemble.pth", map_location=DEVICE)
+)
 model.eval()
+
+# Print model layers
+for name, layer in model.named_modules():
+    print(name, layer)
 
 # target_layer = model.layer4[-1]
 def find_target_layer(model, target_layer_name):
@@ -26,12 +44,7 @@ def find_target_layer(model, target_layer_name):
 target_layer = None
 
 target_layer = None
-# for child in model.features[-1]:
-for child in model.features:
-    if isinstance(child, nn.Conv2d):
-        target_layer = child
-# Verify that you have the correct layer
-print(target_layer)
+
 
 #Resnet18 and 50: model.layer4[-1]
 #VGG and densenet161: model.features[-1]
@@ -54,7 +67,7 @@ input_tensor = input_tensor.to(DEVICE)
 # Note: input_tensor can be a batch tensor with several images
 
 # Construct the CAM object once, and then re-use it on many images:
-cam = FullGrad(model=model, target_layers=[target_layer], use_cuda=True)
+cam = GradCAMPlusPlus(model=model, target_layers=[target_layer], use_cuda=True)
 
 # You can also pass aug_smooth=True and eigen_smooth=True, to apply smoothing.
 grayscale_cam = cam(input_tensor=input_tensor)  # [batch, 224,224]

@@ -10,12 +10,25 @@ from configs import *
 
 
 # Load your model (change this according to your model definition)
-MODEL.load_state_dict(
-    torch.load(MODEL_SAVE_PATH, map_location=DEVICE)
-)  # Load the model on the same device
-MODEL.eval()
-model = MODEL.to(DEVICE)
+model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
+model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
+model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
+model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
+
+model1.eval()
+model2.eval()
+model3.eval()
+
+# Load the model
+model = WeightedVoteEnsemble([model1, model2, model3], [0.38, 0.34, 0.28])
+# model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model.load_state_dict(
+    torch.load("output/checkpoints/WeightedVoteEnsemble.pth", map_location=DEVICE)
+)
 model.eval()
+
 torch.set_grad_enabled(False)
 
 

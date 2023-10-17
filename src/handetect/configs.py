@@ -29,6 +29,8 @@ from torchvision.models import (
     MobileNet_V3_Large_Weights,
     googlenet,
     GoogLeNet_Weights,
+    MobileNet_V2_Weights,
+    mobilenet_v2,
 )
 
 import torch.nn.functional as F
@@ -36,8 +38,9 @@ import torch.nn.functional as F
 # Constants
 RANDOM_SEED = 123
 BATCH_SIZE = 32
-NUM_EPOCHS = 100
-LEARNING_RATE = 3.617930105699311e-05
+NUM_EPOCHS = 150
+WARMUP_EPOCHS = 5
+LEARNING_RATE = 1.098582599143508e-04
 STEP_SIZE = 10
 GAMMA = 0.3
 CUTMIX_ALPHA = 0.3
@@ -53,7 +56,7 @@ COMBINED_DATA_DIR = r"data/train/combined/Task "
 TEMP_DATA_DIR = "data/temp/"
 NUM_CLASSES = 7
 LABEL_SMOOTHING_EPSILON = 0.1
-EARLY_STOPPING_PATIENCE = 10
+EARLY_STOPPING_PATIENCE = 20
 CLASSES = [
     "Alzheimer Disease",
     "Cerebral Palsy",
@@ -261,7 +264,30 @@ class GoogLeNetWithSE(nn.Module):
         return x
 
 
-MODEL = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES)
+class MobileNetV2WithDropout(nn.Module):
+    def __init__(self, num_classes, dropout_prob=0.2):
+        super(MobileNetV2WithDropout, self).__init__()
+        mobilenet = mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
+        self.features = mobilenet.features
+        self.classifier = nn.Sequential(
+            nn.Conv2d(1280, num_classes, kernel_size=1),
+            nn.BatchNorm2d(num_classes),  # add batch normalization
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1)),
+        )
+        self.dropout = nn.Dropout(
+            dropout_prob
+        )  # Add dropout layer with the specified probability
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        x = F.dropout(x, training=self.training)  # Apply dropout during training
+        x = torch.flatten(x, 1)
+        return x
+
+
+MODEL = EfficientNetB2WithDropout(num_classes=NUM_CLASSES)
 MODEL_SAVE_PATH = r"output/checkpoints/" + MODEL.__class__.__name__ + ".pth"
 # MODEL_SAVE_PATH = r"C:\Users\User\Downloads\bestsqueezenetSE.pth"
 preprocess = transforms.Compose(
@@ -286,3 +312,14 @@ class CustomDataset(Dataset):
     def __getitem__(self, idx):
         img, label = self.data[idx]
         return img, label
+
+
+def ensemble_predictions(models, image):
+    all_predictions = []
+
+    with torch.no_grad():
+        for model in models:
+            output = model(image)
+            all_predictions.append(output)
+
+    return torch.stack(all_predictions, dim=0).mean(dim=0)
