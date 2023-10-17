@@ -27,7 +27,7 @@ def load_data(combined_dir, preprocess, batch_size=BATCH_SIZE):
         CustomDataset(train_dataset), batch_size=batch_size, shuffle=True, num_workers=0
     )
     valid_loader = DataLoader(
-        CustomDataset(val_dataset), batch_size=batch_size, num_workers=0
+        CustomDataset(val_dataset), batch_size=batch_size, num_workers=0, shuffle=False
     )
 
     return train_loader, valid_loader

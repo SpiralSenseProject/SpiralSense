@@ -9,13 +9,14 @@ from configs import *
 import data_loader
 from torch.utils.tensorboard import SummaryWriter
 import time
-
+from optuna_dashboard import run_server
+import numpy as np
 
 torch.cuda.empty_cache()
 
 EPOCHS = 10
-N_TRIALS = 20
-TIMEOUT = 5000
+N_TRIALS = 10
+# TIMEOUT = 5000
 
 EARLY_STOPPING_PATIENCE = (
     4  # Number of epochs with no improvement to trigger early stopping
@@ -34,6 +35,51 @@ def create_data_loaders(batch_size):
         batch_size=batch_size,
     )
     return train_loader, valid_loader
+
+
+def rand_bbox(size, lam):
+    W = size[2]
+    H = size[3]
+    cut_rat = np.sqrt(1.0 - lam)
+    cut_w = np.int_(W * cut_rat)
+    cut_h = np.int_(H * cut_rat)
+
+    # uniform
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+
+    return bbx1, bby1, bbx2, bby2
+
+
+def cutmix_data(input, target, alpha=1.0):
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    batch_size = input.size()[0]
+    index = torch.randperm(batch_size)
+    rand_index = torch.randperm(input.size()[0])
+
+    bbx1, bby1, bbx2, bby2 = rand_bbox(input.size(), lam)
+    input[:, :, bbx1:bbx2, bby1:bby2] = input[rand_index, :, bbx1:bbx2, bby1:bby2]
+
+    lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (input.size()[-1] * input.size()[-2]))
+    targets_a = target
+    targets_b = target[rand_index]
+
+    return input, targets_a, targets_b, lam
+
+
+def cutmix_criterion(criterion, outputs, targets_a, targets_b, lam):
+    return lam * criterion(outputs, targets_a) + (1 - lam) * criterion(
+        outputs, targets_b
+    )
 
 
 # Objective function for optimization
@@ -84,11 +130,15 @@ def objective(trial, model=MODEL):
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(valid_loader, 0):
                 data, target = data.to(DEVICE), target.to(DEVICE)
+                data, targets_a, targets_b, lam = cutmix_data(data, target, alpha=1)
                 output = model(data)
                 pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
 
         accuracy = correct / len(valid_loader.dataset)
+        if accuracy >= 1.0:
+            print(f"Desired accuracy of 1.0 achieved. Stopping early.")
+            return float("inf")
 
         # Log hyperparameters and accuracy to TensorBoard
         writer.add_scalar("Accuracy", accuracy, trial.number)
@@ -126,13 +176,15 @@ if __name__ == "__main__":
     # Record the start time
     start_time = time.time()
 
+    # storage = optuna.storages.InMemoryStorage()
     study = optuna.create_study(
         direction="maximize",
         pruner=pruner,
         study_name="hyperparameter_tuning",
+        storage="sqlite:///" + MODEL.__class__.__name__ + ".sqlite3",
     )
 
-    study.optimize(objective, n_trials=N_TRIALS, timeout=TIMEOUT)
+    study.optimize(objective, n_trials=N_TRIALS)
 
     # Record the end time
     end_time = time.time()

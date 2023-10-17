@@ -17,4 +17,5 @@ optimized_image.jpg
 training_curves.png
 .vscode/
 data
+*sqlite3
 ```
