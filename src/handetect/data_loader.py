@@ -5,6 +5,8 @@ import torch
 
 torch.manual_seed(RANDOM_SEED)
 
+# Set seed
+torch.manual_seed(RANDOM_SEED)
 
 def load_data(combined_dir, preprocess, batch_size=BATCH_SIZE):
     dataset = ImageFolder(combined_dir, transform=preprocess)

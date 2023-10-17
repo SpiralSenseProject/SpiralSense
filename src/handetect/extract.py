@@ -1,78 +1,52 @@
-from pytorch_grad_cam import GradCAM, ScoreCAM, GradCAMPlusPlus, AblationCAM, XGradCAM, EigenCAM, EigenGradCAM, LayerCAM, FullGrad
-from pytorch_grad_cam.utils.image import show_cam_on_image, \
-                                         deprocess_image, \
-                                         preprocess_image
+from pytorch_grad_cam import GradCAMPlusPlus
+from pytorch_grad_cam.utils.image import show_cam_on_image, preprocess_image
 import cv2
 import numpy as np
-import os
+import torch
+import torch.nn as nn  # Replace with your model
 from configs import *
 
-# clear cuda cache
-torch.cuda.empty_cache()
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
-model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
-model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
-model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
-model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
-model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
-
-model1.eval()
-model2.eval()
-model3.eval()
-
-# Load the model
-model = WeightedVoteEnsemble([model1, model2, model3],[0.37, 0.34, 0.29])
-# model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
-model.load_state_dict(
-    torch.load("output/checkpoints/WeightedVoteEnsemble.pth", map_location=DEVICE)
-)
+# Load your model (replace with your model class)
+model = MODEL  # Replace with your model
+model.load_state_dict(torch.load(MODEL_SAVE_PATH))
 model.eval()
+model = model.to(DEVICE)
 
-# Print model layers
-for name, layer in model.named_modules():
-    print(name, layer)
-
-# target_layer = model.layer4[-1]
-def find_target_layer(model, target_layer_name):
-    for name, layer in model.named_modules():
-        if name == target_layer_name:
-            return layer
-    return None
-
-# Assuming 'model' is an instance of EfficientNetB2WithDropout
+# Find the target layer (modify this based on your model architecture)
 target_layer = None
+for child in model.features[-1]:
+    if isinstance(child, nn.Conv2d):
+        target_layer = child
 
-target_layer = None
+if target_layer is None:
+    raise ValueError("Invalid layer name: {}".format(target_layer))
 
-
-#Resnet18 and 50: model.layer4[-1]
-#VGG and densenet161: model.features[-1]
-#mnasnet1_0: model.layers[-1]
-#ViT: model.blocks[-1].norm1
-#SqueezeNet1_0: model.features
-
-image_path = r'data\train\external\Task 1\Essential Tremor\03.png'
-rgb_img = cv2.imread(image_path, 1)[:, :, ::-1]   
-                                                 
-rgb_img = cv2.imread(image_path, 1) 
+# Load and preprocess the image
+image_path = 'data/train/external/Task 1/Essential Tremor/01.png'
+rgb_img = cv2.imread(image_path, 1)
 rgb_img = np.float32(rgb_img) / 255
-
-
-
-input_tensor = preprocess_image(rgb_img, mean=[0.485, 0.456, 0.406],
-                                             std=[0.229, 0.224, 0.225])   # torch.Size([1, 3, 224, 224])
+input_tensor = preprocess_image(rgb_img, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])
 input_tensor = input_tensor.to(DEVICE)
-# Create an input tensor image for your model..
-# Note: input_tensor can be a batch tensor with several images
 
-# Construct the CAM object once, and then re-use it on many images:
+# Create a GradCAMPlusPlus object
 cam = GradCAMPlusPlus(model=model, target_layers=[target_layer], use_cuda=True)
 
-# You can also pass aug_smooth=True and eigen_smooth=True, to apply smoothing.
-grayscale_cam = cam(input_tensor=input_tensor)  # [batch, 224,224]
+# Generate the GradCAM heatmap
+grayscale_cam = cam(input_tensor=input_tensor)[0]
 
-# In this example grayscale_cam has only one image in the batch:
-grayscale_cam = grayscale_cam[0]
-visualization = show_cam_on_image(rgb_img, grayscale_cam)  # (224, 224, 3)
-cv2.imwrite('cam.jpg', visualization) 
+# Apply a colormap to the grayscale heatmap
+heatmap_colored = cv2.applyColorMap(np.uint8(255 * grayscale_cam), cv2.COLORMAP_JET)
+
+# Ensure heatmap_colored has the same dtype as rgb_img
+heatmap_colored = heatmap_colored.astype(np.float32) / 255
+
+# Adjust the alpha value to control transparency
+alpha = 0.3  # You can change this value to make the original image more or less transparent
+
+# Overlay the colored heatmap on the original image
+final_output = cv2.addWeighted(rgb_img, 0.3, heatmap_colored, 0.7, 0)
+
+# Save the final output
+cv2.imwrite('cam.jpg', (final_output * 255).astype(np.uint8))
