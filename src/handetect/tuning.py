@@ -36,7 +36,7 @@ def create_data_loaders(batch_size):
 # Objective function for optimization
 def objective(trial, model=MODEL):
     model = model.to(DEVICE)
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
+    batch_size = trial.suggest_categorical("batch_size", [32, 64])
     train_loader, valid_loader = create_data_loaders(batch_size)
 
     lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
