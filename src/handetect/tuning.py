@@ -8,12 +8,15 @@ import torch.utils.data
 from configs import *
 import data_loader
 from torch.utils.tensorboard import SummaryWriter
+import time
+
 
 torch.cuda.empty_cache()
 
 EPOCHS = 10
 N_TRIALS = 20
-TIMEOUT = 18000
+TIMEOUT = 5000
+
 EARLY_STOPPING_PATIENCE = (
     4  # Number of epochs with no improvement to trigger early stopping
 )
@@ -36,7 +39,7 @@ def create_data_loaders(batch_size):
 # Objective function for optimization
 def objective(trial, model=MODEL):
     model = model.to(DEVICE)
-    batch_size = trial.suggest_categorical("batch_size", [32, 64])
+    batch_size = trial.suggest_categorical("batch_size", [16, 32])
     train_loader, valid_loader = create_data_loaders(batch_size)
 
     lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
@@ -119,6 +122,10 @@ def objective(trial, model=MODEL):
 
 if __name__ == "__main__":
     pruner = optuna.pruners.HyperbandPruner()
+
+    # Record the start time
+    start_time = time.time()
+
     study = optuna.create_study(
         direction="maximize",
         pruner=pruner,
@@ -126,6 +133,13 @@ if __name__ == "__main__":
     )
 
     study.optimize(objective, n_trials=N_TRIALS, timeout=TIMEOUT)
+
+    # Record the end time
+    end_time = time.time()
+
+    # Calculate the duration of hyperparameter tuning
+    tuning_duration = end_time - start_time
+    print(f"Hyperparameter tuning took {tuning_duration:.2f} seconds.")
 
     best_trial = study.best_trial
     print("\nBest Trial:")
