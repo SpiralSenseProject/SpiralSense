@@ -165,6 +165,7 @@ total_possibilities = len(valid_combinations)
 print("Total number of possibilities:", total_possibilities)
 
 valid_combinations = [[0.38, 0.34, 0.28]]
+# 0.38 for SqueezeNet, 0.34 for EfficientNetB2WithDropout, 0.28 for MobileNetV2WithDropout
 best_weighted_vote_ensemble_model = None
 
 for weights in valid_combinations:

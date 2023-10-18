@@ -44,8 +44,8 @@ LEARNING_RATE = 1.098582599143508e-04
 STEP_SIZE = 10
 GAMMA = 0.3
 CUTMIX_ALPHA = 0.3
-# DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-DEVICE = torch.device("cpu")
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+# DEVICE = torch.device("cpu")
 NUM_PRINT = 100
 TASK = 1
 WARMUP_EPOCHS = 5
@@ -287,14 +287,14 @@ class MobileNetV2WithDropout(nn.Module):
         return x
 
 
-MODEL = EfficientNetB2WithDropout(num_classes=NUM_CLASSES)
+MODEL = EfficientNetB3WithDropout(num_classes=NUM_CLASSES)
 MODEL_SAVE_PATH = r"output/checkpoints/" + MODEL.__class__.__name__ + ".pth"
 # MODEL_SAVE_PATH = r"C:\Users\User\Downloads\bestsqueezenetSE.pth"
 preprocess = transforms.Compose(
     [
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),  # Convert to tensor
         transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
-        transforms.Resize((224, 224)),
         # Normalize 3 channels
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]

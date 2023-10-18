@@ -15,7 +15,7 @@ import numpy as np
 torch.cuda.empty_cache()
 
 EPOCHS = 10
-N_TRIALS = 10
+# N_TRIALS = 10
 # TIMEOUT = 5000
 
 EARLY_STOPPING_PATIENCE = (
@@ -184,7 +184,7 @@ if __name__ == "__main__":
         storage="sqlite:///" + MODEL.__class__.__name__ + ".sqlite3",
     )
 
-    study.optimize(objective, n_trials=N_TRIALS)
+    study.optimize(objective)
 
     # Record the end time
     end_time = time.time()
