@@ -45,15 +45,15 @@ demo = gr.Interface(
     theme="gradio/soft",
     fn=process_file,
     title="HANDETECT",
-    description=generate_description,
+    # description=generate_description,
     inputs=[
         gr.components.Image(type="filepath", label="Choose Image", source="upload"),
     ],
     outputs=[
-        gr.outputs.Textbox(label="Prediction 1"),
-        gr.outputs.Textbox(label="Prediction 2"),
-        gr.outputs.Textbox(label="Prediction 3"),
+        gr.outputs.Textbox(label="Probability 1"),
+        gr.outputs.Textbox(label="Probability 2"),
+        gr.outputs.Textbox(label="Probability 3"),
     ],
 )
 
-demo.launch()
+demo.launch(inbrowser=True)

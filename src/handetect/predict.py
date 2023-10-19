@@ -22,10 +22,10 @@ model2.eval()
 model3.eval()
 
 # Load the model
-model = WeightedVoteEnsemble([model1, model2, model3], [0.38, 0.34, 0.28])
+model = MODEL.to(DEVICE)
 # model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
 model.load_state_dict(
-    torch.load("output/checkpoints/WeightedVoteEnsemble.pth", map_location=DEVICE)
+    torch.load("output/checkpoints/EfficientNetB3WithDropout.pth", map_location=DEVICE)
 )
 model.eval()
 
