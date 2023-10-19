@@ -11,88 +11,172 @@ from sklearn.metrics import (
     f1_score,
     confusion_matrix,
     ConfusionMatrixDisplay,
-    roc_curve,
-    auc,
 )
 from sklearn.preprocessing import label_binarize
+from torchvision import transforms
 from configs import *
-from data_loader import load_data  # Import the load_data function
+
+# EfficientNet: 0.901978973407545
+# MobileNet: 0.8731189445475158
+# SquuezeNet:  0.8559218559218559
+
 
 # Constants
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+NUM_AUGMENTATIONS = 10  # Number of augmentations to perform
+
+model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
+model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
+model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
+model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
+
+best_weights = [0.901978973407545, 0.8731189445475158, 0.8559218559218559]
 
 # Load the model
-MODEL = MODEL.to(DEVICE)
-MODEL.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
-MODEL.eval()
+model = WeightedVoteEnsemble([model1, model2, model3], best_weights)
+# model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
+model.load_state_dict(torch.load('output/checkpoints/WeightedVoteEnsemble.pth', map_location=DEVICE))
+model.eval()
 
-def predict_image(image_path, model, transform):
+# define augmentations for TTA
+tta_transforms = transforms.Compose(
+    [
+        transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomVerticalFlip(p=0.5),
+    ]
+)
+
+
+def perform_tta(model, image, tta_transforms):
+    augmented_predictions = []
+    augmented_scores = []
+
+    for _ in range(NUM_AUGMENTATIONS):
+        augmented_image = tta_transforms(image)
+        output = model(augmented_image)
+        predicted_class = torch.argmax(output, dim=1).item()
+        augmented_predictions.append(predicted_class)
+        augmented_scores.append(output.softmax(dim=1).cpu().numpy())
+
+    # max voting
+    final_predicted_class_max = max(
+        set(augmented_predictions), key=augmented_predictions.count
+    )
+
+    # average probabilities
+    final_predicted_scores_avg = np.mean(np.array(augmented_scores), axis=0)
+
+    # rotate and average probabilities
+    rotation_transforms = [
+        transforms.RandomRotation(degrees=i) for i in range(0, 360, 30)
+    ]
+    rotated_scores = []
+    for rotation_transform in rotation_transforms:
+        augmented_image = rotation_transform(image)
+        output = model(augmented_image)
+        rotated_scores.append(output.softmax(dim=1).cpu().numpy())
+
+    final_predicted_scores_rotation = np.mean(np.array(rotated_scores), axis=0)
+
+    return (
+        final_predicted_class_max,
+        final_predicted_scores_avg,
+        final_predicted_scores_rotation,
+    )
+
+
+def predict_image_with_tta(image_path, model, transform, tta_transforms):
     model.eval()
     correct_predictions = 0
-
-    # Get a list of image files
-    images = list(pathlib.Path(image_path).rglob("*.png"))
-
-    total_predictions = len(images)
-
     true_classes = []
-    predicted_labels = []
-    predicted_scores = []  # To store predicted class probabilities
+    predicted_labels_max = []
+    predicted_labels_avg = []
+    predicted_labels_rotation = []
 
     with torch.no_grad():
-        for image_file in images:
-            print("---------------------------")
-            # Check the true label of the image by checking the sequence of the folder in Task 1
-            true_class = CLASSES.index(image_file.parts[-2])
-            print("Image path:", image_file)
-            print("True class:", true_class)
-            image = Image.open(image_file).convert("RGB")
-            image = transform(image).unsqueeze(0)
-            image = image.to(DEVICE)
-            output = model(image)
-            predicted_class = torch.argmax(output, dim=1).item()
-            # Print the predicted class
-            print("Predicted class:", predicted_class)
-            # Append true and predicted labels to their respective lists
-            true_classes.append(true_class)
-            predicted_labels.append(predicted_class)
-            predicted_scores.append(
-                output.softmax(dim=1).cpu().numpy()
-            )  # Store predicted class probabilities
+        images = list(pathlib.Path(image_path).rglob("*.png"))
+        total_predictions = len(images)
 
-            # Check if the prediction is correct
-            if predicted_class == true_class:
+        for image_file in images:
+            true_class = CLASSES.index(image_file.parts[-2])
+
+            original_image = Image.open(image_file).convert("RGB")
+            original_image = transform(original_image).unsqueeze(0)
+            original_image = original_image.to(DEVICE)
+
+            # Perform TTA with different strategies
+            final_predicted_class_max, _, _ = perform_tta(
+                model, original_image, tta_transforms
+            )
+            _, final_predicted_scores_avg, _ = perform_tta(
+                model, original_image, tta_transforms
+            )
+            _, _, final_predicted_scores_rotation = perform_tta(
+                model, original_image, tta_transforms
+            )
+
+            true_classes.append(true_class)
+            predicted_labels_max.append(final_predicted_class_max)
+            predicted_labels_avg.append(np.argmax(final_predicted_scores_avg))
+            predicted_labels_rotation.append(np.argmax(final_predicted_scores_rotation))
+
+            if final_predicted_class_max == true_class:
                 correct_predictions += 1
 
-    # Calculate accuracy and f1 score
-    accuracy = accuracy_score(true_classes, predicted_labels)
-    print("Accuracy:", accuracy)
-    f1 = f1_score(true_classes, predicted_labels, average="weighted")
-    print("Weighted F1 Score:", f1)
+    # accuracy for each strategy
+    accuracy_max = accuracy_score(true_classes, predicted_labels_max)
+    accuracy_avg = accuracy_score(true_classes, predicted_labels_avg)
+    accuracy_rotation = accuracy_score(true_classes, predicted_labels_rotation)
 
-    # Convert the lists to tensors
-    predicted_labels_tensor = torch.tensor(predicted_labels)
-    true_classes_tensor = torch.tensor(true_classes)
+    print("Accuracy (Max Voting):", accuracy_max)
+    print("Accuracy (Average Probabilities):", accuracy_avg)
+    print("Accuracy (Rotation and Average):", accuracy_rotation)
 
-    # Calculate the confusion matrix
-    conf_matrix = confusion_matrix(true_classes, predicted_labels)
+    # final prediction using ensemble (choose the strategy with the highest accuracy)
+    final_predicted_labels = []
+    for i in range(len(true_classes)):
+        max_strategy_accuracy = max(accuracy_max, accuracy_avg, accuracy_rotation)
+        if accuracy_max == max_strategy_accuracy:
+            final_predicted_labels.append(predicted_labels_max[i])
+        elif accuracy_avg == max_strategy_accuracy:
+            final_predicted_labels.append(predicted_labels_avg[i])
+        else:
+            final_predicted_labels.append(predicted_labels_rotation[i])
 
-    # Plot the confusion matrix
-    ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=CLASSES).plot(cmap=plt.cm.Blues)
-    plt.title("Confusion Matrix")
-    plt.show()
+    # calculate accuracy and f1 score(ensemble)
+    accuracy_ensemble = accuracy_score(true_classes, final_predicted_labels)
+    f1_ensemble = f1_score(true_classes, final_predicted_labels, average="weighted")
+
+    print("Ensemble Accuracy:", accuracy_ensemble)
+    print("Ensemble Weighted F1 Score:", f1_ensemble)
 
     # Classification report
     class_names = [str(cls) for cls in range(NUM_CLASSES)]
     report = classification_report(
-        true_classes, predicted_labels, target_names=class_names
+        true_classes, final_predicted_labels, target_names=class_names
     )
-    print("Classification Report:\n", report)
+    print("Classification Report of", MODEL.__class__.__name__, ":\n", report)
+    
+    # confusion matrix and classification report for the ensemble
+    conf_matrix_ensemble = confusion_matrix(true_classes, final_predicted_labels)
+    ConfusionMatrixDisplay(
+        confusion_matrix=conf_matrix_ensemble, display_labels=range(NUM_CLASSES)
+    ).plot(cmap=plt.cm.Blues)
+    plt.title("Confusion Matrix (Ensemble)")
+    plt.show()
+
+    class_names = [str(cls) for cls in range(NUM_CLASSES)]
+    report_ensemble = classification_report(
+        true_classes, final_predicted_labels, target_names=class_names
+    )
+    print("Classification Report (Ensemble):\n", report_ensemble)
 
     # Calculate precision and recall for each class
     true_classes_binary = label_binarize(true_classes, classes=range(NUM_CLASSES))
     precision, recall, _ = precision_recall_curve(
-        true_classes_binary.ravel(), np.array(predicted_scores).ravel()
+        true_classes_binary.ravel(), np.array(final_predicted_scores_rotation).ravel()
     )
 
     # Plot precision-recall curve
@@ -103,6 +187,4 @@ def predict_image(image_path, model, transform):
     plt.ylabel("Precision")
     plt.show()
 
-
-# Call predict_image function with your image path
-predict_image("data/test/Task 1/", MODEL, preprocess)
+predict_image_with_tta("data/test/Task 1/", model, preprocess, tta_transforms)

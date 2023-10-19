@@ -39,3 +39,31 @@ from torchvision.models import efficientnet_v2_m
 from torchvision.models import efficientnet_v2_l
 from torchvision.models import efficientnet_b0
 from torchvision.models import efficientnet_b1
+import torch
+import torch.nn as nn
+
+class WeightedVoteEnsemble(nn.Module):
+    def __init__(self, models, weights):
+        super(WeightedVoteEnsemble, self).__init__()
+        self.models = models
+        self.weights = weights
+
+    def forward(self, x):
+        predictions = [model(x) for model in self.models]
+        weighted_predictions = torch.stack(
+            [w * pred for w, pred in zip(self.weights, predictions)], dim=0
+        )
+        avg_predictions = weighted_predictions.sum(dim=0)
+        return avg_predictions
+
+
+def ensemble_predictions(models, image):
+    all_predictions = []
+
+    with torch.no_grad():
+        for model in models:
+            output = model(image)
+            all_predictions.append(output)
+
+    return torch.stack(all_predictions, dim=0).mean(dim=0)
+

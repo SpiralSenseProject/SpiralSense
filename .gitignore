@@ -11,5 +11,11 @@ output/logs/*
 output/tensorboard/*
 temp/
 .venv/
-data/train/augmented/*
+data/*
+cam.jpg
+optimized_image.jpg
+training_curves.png
+.vscode/
+data
+*sqlite3
 ```
