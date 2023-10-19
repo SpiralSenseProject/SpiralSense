@@ -17,5 +17,6 @@ optimized_image.jpg
 training_curves.png
 .vscode/
 data
+gradcam.jpg
 *sqlite3
 ```
