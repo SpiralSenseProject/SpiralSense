@@ -9,7 +9,7 @@ import os, random
 
 # Load your model (replace with your model class)
 model = MODEL.to(DEVICE)
-model.load_state_dict(torch.load(MODEL_SAVE_PATH))
+model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
 model.eval()
 
 # Find the target layer (modify this based on your model architecture)
