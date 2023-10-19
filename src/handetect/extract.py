@@ -59,7 +59,7 @@ def extract_gradcam(image_path=None, save_path=None):
             input_tensor = input_tensor.to(DEVICE)
 
             # Create a GradCAMPlusPlus object
-            cam = GradCAMPlusPlus(model=model, target_layers=[target_layer], use_cuda=True)
+            cam = GradCAMPlusPlus(model=model, target_layers=[target_layer])
 
             # Generate the GradCAM heatmap
             grayscale_cam = cam(input_tensor=input_tensor)[0]
