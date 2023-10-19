@@ -295,7 +295,7 @@ preprocess = transforms.Compose(
     [
         transforms.Resize((224, 224)),
         transforms.ToTensor(),  # Convert to tensor
-        # transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
+        transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
         # Normalize 3 channels
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]

@@ -110,6 +110,7 @@ def predict_image(image_path, model, transform):
         confusion_matrix=conf_matrix, display_labels=range(NUM_CLASSES)
     ).plot(cmap=plt.cm.Blues)
     plt.title("Confusion Matrix")
+    plt.savefig("docs/efficientnet/confusion_matrix.png")
     plt.show()
 
     # Classification report
