@@ -49,4 +49,4 @@ demo = gr.Interface(
     ],
 )
 
-demo.launch(inbrowser=True, share=True)
+demo.launch()
