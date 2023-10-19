@@ -10,16 +10,16 @@ from configs import *
 
 
 # Load your model (change this according to your model definition)
-model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
-model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
-model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
-model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
-model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
-model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
+# model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+# model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
+# model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
+# model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
+# model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+# model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
 
-model1.eval()
-model2.eval()
-model3.eval()
+# model1.eval()
+# model2.eval()
+# model3.eval()
 
 # Load the model
 model = MODEL.to(DEVICE)
