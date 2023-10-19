@@ -5,7 +5,7 @@ import uuid
 
 from configs import *
 
-shutil.rmtree(COMBINED_DATA_DIR, ignore_errors=True)
+shutil.rmtree(COMBINED_DATA_DIR + "1/", ignore_errors=True)
 
 for disease in CLASSES:
     # check if the original folder exists

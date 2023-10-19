@@ -7,7 +7,7 @@ import uuid
 tasks = ["1", "2", "3", "4", "5", "6"]
 num_of_images = 100
 
-shutil.rmtree(TEMP_DATA_DIR, ignore_errors=True)
+shutil.rmtree(TEMP_DATA_DIR + "1/", ignore_errors=True)
 
 
 for task in ["1"]:
@@ -72,4 +72,4 @@ for task in ["1"]:
                     f"{AUG_DATA_DIR}{task}/{class_label}/{number}.png",
                 )
 
-shutil.rmtree(TEMP_DATA_DIR)
+shutil.rmtree(TEMP_DATA_DIR + task, ignore_errors=True)

@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 from models import *
 from torch.utils.tensorboard import SummaryWriter
 from configs import *
@@ -11,6 +12,9 @@ import torch.nn.functional as F
 import csv
 import numpy as np
 from torchcontrib.optim import SWA
+
+
+rcParams["font.family"] = "Times New Roman"
 
 SWA_START = 5  # Starting epoch for SWA
 SWA_FREQ = 5  # Frequency of updating SWA weights

@@ -20,12 +20,16 @@ print("DEVICE:", DEVICE)
 
 # Define your model paths
 # Load your pre-trained models
-model2 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
-model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB2WithDropout.pth"))
+model2 = EfficientNetB3WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model2.load_state_dict(torch.load("output/checkpoints/EfficientNetB3WithDropout.pth"))
 model1 = SqueezeNet1_0WithSE(num_classes=NUM_CLASSES).to(DEVICE)
 model1.load_state_dict(torch.load("output/checkpoints/SqueezeNet1_0WithSE.pth"))
 model3 = MobileNetV2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
 model3.load_state_dict(torch.load("output\checkpoints\MobileNetV2WithDropout.pth"))
+model4 = EfficientNetB2WithDropout(num_classes=NUM_CLASSES).to(DEVICE)
+model4.load_state_dict(torch.load("output\checkpoints\EfficientNetB2WithDropout.pth"))
+
+models = [model1, model2, model3, model4]
 
 # Define the class labels
 class_labels = CLASSES
@@ -111,7 +115,7 @@ def evaluate_and_plot_confusion_matrix(models, test_data_folder):
     return accuracy
 
 # Set the models to evaluation mode
-set_models_eval([model1, model2, model3])
+set_models_eval(models)
 
 # Define different weight configurations
 # [SqueezeNet, EfficientNetB2WithDropout, MobileNetV2WithDropout]
@@ -143,28 +147,31 @@ i = 0
 # weights_hist = []
 
 target_sum = 1.0
-number_of_numbers = 3
-lower_limit = 0.25
-upper_limit = 0.5
-step = 0.1
+number_of_numbers = 4
+lower_limit = 0.2
+upper_limit = 0.8
+step = 0.01
 
 valid_combinations = []
 
-# Generate all unique combinations of three numbers with values to two decimal places
-range_values = list(range(int(lower_limit * 100), int(upper_limit * 100) + 1))
-for combo in product(range_values, repeat=number_of_numbers):
-    combo_float = [x / 100.0 for x in combo]
-
-    # Check if the sum of the numbers is equal to 1
-    if sum(combo_float) == target_sum:
-        valid_combinations.append(combo_float)
+# Generate all unique combinations of four numbers with values to two decimal places
+for combination in product(
+    *[range(int(lower_limit * 100), int(upper_limit * 100) + 1)] * number_of_numbers
+):
+    # Convert the combination to a list of floats
+    combination = [float(number) / 100 for number in combination]
+    # Check if the sum of the combination is equal to the target sum
+    if sum(combination) == target_sum:
+        # Add the combination to the list of valid combinations
+        valid_combinations.append(combination)
+                
 
 # Calculate the total number of possibilities
 total_possibilities = len(valid_combinations)
 
 print("Total number of possibilities:", total_possibilities)
 
-valid_combinations = [[0.38, 0.34, 0.28]]
+# valid_combinations = [[0.3, 0.5, 0.2]]
 # 0.38 for SqueezeNet, 0.34 for EfficientNetB2WithDropout, 0.28 for MobileNetV2WithDropout
 best_weighted_vote_ensemble_model = None
 
@@ -182,7 +189,7 @@ for weights in valid_combinations:
     # weights_hist.append(weights)
     weighted_vote_ensemble_model = WeightedVoteEnsemble(
         # [model1, model2, model3], weights
-        [model1, model2, model3],
+        models,
         weights,
     )
     # print("Weights:", weights)

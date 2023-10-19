@@ -9,10 +9,11 @@ from configs import *
 import data_loader
 from torch.utils.tensorboard import SummaryWriter
 import time
-from optuna_dashboard import run_server
 import numpy as np
 
 torch.cuda.empty_cache()
+
+print(f"Using device: {DEVICE}")
 
 EPOCHS = 10
 # N_TRIALS = 10
@@ -171,7 +172,7 @@ def objective(trial, model=MODEL):
 
 
 if __name__ == "__main__":
-    pruner = optuna.pruners.HyperbandPruner()
+    hyperband_pruner = optuna.pruners.HyperbandPruner()
 
     # Record the start time
     start_time = time.time()
@@ -179,7 +180,7 @@ if __name__ == "__main__":
     # storage = optuna.storages.InMemoryStorage()
     study = optuna.create_study(
         direction="maximize",
-        pruner=pruner,
+        pruner=hyperband_pruner,
         study_name="hyperparameter_tuning",
         storage="sqlite:///" + MODEL.__class__.__name__ + ".sqlite3",
     )

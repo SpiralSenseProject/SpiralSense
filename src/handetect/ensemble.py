@@ -1,14 +1,7 @@
 import matplotlib.pyplot as plt
 from torch.optim.lr_scheduler import CosineAnnealingLR
-import matplotlib.pyplot as plt
-from torch.optim.lr_scheduler import CosineAnnealingLR
 import torch
 import torch.nn as nn
-import torch.optim as optim
-from torchvision.datasets import ImageFolder
-from torch.utils.data import DataLoader
-from data_loader import load_data, load_test_data
-import torch.optim as optim
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 from data_loader import load_data, load_test_data
@@ -59,7 +52,7 @@ test_loader = load_test_data("data/test/Task 1", preprocess, BATCH_SIZE)
 
 model_paths = [
     "output/checkpoints/bestsqueezenetSE3.pth",
-    "output/checkpoints/EfficientNetB2WithDropout.pth",
+    "output/checkpoints/EfficientNetB3WithDropout.pth",
     "output/checkpoints/MobileNetV2WithDropout2.pth",
 ]
 
@@ -120,7 +113,7 @@ model1 = load_pretrained_model(
     model_paths[0], SqueezeNet1_0WithSE(num_classes=NUM_CLASSES)
 ).to(DEVICE)
 model2 = load_pretrained_model(
-    model_paths[1], EfficientNetB2WithDropout(num_classes=NUM_CLASSES)
+    model_paths[1], EfficientNetB3WithDropout(num_classes=NUM_CLASSES)
 ).to(DEVICE)
 model3 = load_pretrained_model(
     model_paths[2], MobileNetV2WithDropout(num_classes=NUM_CLASSES)

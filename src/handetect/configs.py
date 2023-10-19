@@ -37,15 +37,15 @@ import torch.nn.functional as F
 
 # Constants
 RANDOM_SEED = 123
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 NUM_EPOCHS = 150
 WARMUP_EPOCHS = 5
-LEARNING_RATE = 1.098582599143508e-04
+LEARNING_RATE = 0.0001
 STEP_SIZE = 10
 GAMMA = 0.3
 CUTMIX_ALPHA = 0.3
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-# DEVICE = torch.device("cpu")
+# DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+DEVICE = torch.device("cpu")
 NUM_PRINT = 100
 TASK = 1
 WARMUP_EPOCHS = 5
@@ -53,7 +53,8 @@ RAW_DATA_DIR = r"data/train/raw/Task "
 AUG_DATA_DIR = r"data/train/augmented/Task "
 EXTERNAL_DATA_DIR = r"data/train/external/Task "
 COMBINED_DATA_DIR = r"data/train/combined/Task "
-TEMP_DATA_DIR = "data/temp/"
+TEST_DATA_DIR = r"data/test/Task "
+TEMP_DATA_DIR = "data/temp/Task "
 NUM_CLASSES = 7
 LABEL_SMOOTHING_EPSILON = 0.1
 EARLY_STOPPING_PATIENCE = 20
@@ -294,7 +295,7 @@ preprocess = transforms.Compose(
     [
         transforms.Resize((224, 224)),
         transforms.ToTensor(),  # Convert to tensor
-        transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
+        # transforms.Grayscale(num_output_channels=3),  # Convert to 3 channels
         # Normalize 3 channels
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]
