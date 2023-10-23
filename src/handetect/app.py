@@ -59,14 +59,16 @@ css = """
     width: 100%;
 }
 #image_input {
-    width: 200% !important;
+    width: 237px !important;
+    height: 237px !important;
 }
 #image_input img {
-    width: 200% !important;
+    width: 237px !important;
+    height: 237px !important;
 }
 .output-image {
     width: 70% !important;
-        text-align: -webkit-center !important;
+    text-align: -webkit-center !important;
 }
 .output-image img {
     width:  300px !important;
@@ -81,15 +83,35 @@ css = """
 .built-with {
     visibility: hidden !important;
 }
+
+#title-label {
+    font-size: 35px !important;
+    text-align: -webkit-center !important;
+    margin-block-end: -50px;
+}
+#desc-label {
+    font-size: 15px !important;
+    text-align: -webkit-center !important;
+}
+
+.output-class.svelte-75gm11.svelte-75gm11.svelte-75gm11 {
+    font-size: unset !important;
+}
+
 """
 
-block = gr.Blocks(title="HANDETECT", css=css, theme="gradio/soft")
+block = gr.Blocks(title="SpiralSense", css=css, theme="gradio/soft")
 
 block.queue()
-block.title = "HANDETECT"
 
 with block as demo:
     with gr.Column():
+        gr.Label("SpiralSense", elem_id="title-label", show_label=False)
+        gr.Label(
+            "Cost-Effective, Portable And Stressless Spiral Drawing Analysing Web Application for Early Detection of Multiple Neurological Disorders with 96% Accuracy",
+            elem_id="desc-label",
+            show_label=False
+        )
         with gr.Row():
             image_input = gr.Image(
                 type="filepath",
@@ -98,11 +120,16 @@ with block as demo:
                 elem_id="image_input",
             )
             with gr.Column():
-                gradcam_toggle = gr.Checkbox(
-                    label="GradCAM", default=False
+                feature_explanation = gr.Label(
+                    "Feature Explanation Toggle", elem_id="feature-explanation", show_label=False
                 )
-                lime_toggle = gr.Checkbox(
-                    label="LIME", default=False
+                gradcam_toggle = gr.Checkbox(label="GradCAM++")
+                lime_toggle = gr.Checkbox(label="LIME")
+                warning_of_slow = gr.Label(
+                    "Warning: Feature Explanation may take a very long time to load.",
+                    elem_id="warning_of_slow",
+                    color="red",
+                    show_label=False,
                 )
         with gr.Row():
             submit_button = gr.Button(value="Submit")
