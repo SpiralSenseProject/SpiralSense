@@ -1,49 +1,37 @@
-import numpy as np
-from lime.lime_image import LimeImageExplainer
-from PIL import Image
+# Import necessary libraries
+import shap
 import torch
-import torchvision.transforms as transforms
-import matplotlib.pyplot as plt
+import numpy as np
+
+# Load your EfficientNetB3 model
+from torchvision import models
+
+# Load your test data
+from data_loader import load_test_data  # Replace with your actual data loader function
 from configs import *
 
+# Define your EfficientNetB3 model and load its pre-trained weights
+model = MODEL
 
-model = MODEL.to(DEVICE)
-model.load_state_dict(torch.load(MODEL_SAVE_PATH))
+# Set your model to evaluation mode
 model.eval()
 
-# Load the image
-image = Image.open(
-    r"data\test\Task 1\Healthy\0a7259b2-e650-43aa-93a0-e8b1063476fc.png"
-).convert("RGB")
-image = preprocess(image)
-image = image.unsqueeze(0)  # Add batch dimension
-image = image.to(DEVICE)
+# Load your test data using your data loader
+test_loader = load_test_data(TEST_DATA_DIR + "1", preprocess)  # Replace with your test data loader
 
+# Choose a specific image from the test dataset
+image, _ = next(iter(test_loader))
 
-# Define a function to predict with the model
-def predict(input_image):
-    input_image = torch.tensor(input_image, dtype=torch.float32)
-    if input_image.dim() == 4:
-        input_image = input_image.permute(0, 3, 1, 2)  # Permute the dimensions
-    input_image = input_image.to(DEVICE)  # Move to the appropriate device
-    with torch.no_grad():
-        output = model(input_image)
-    return output
+# Make sure your model and input data are on the same device (CPU or GPU)
+device = DEVICE
+model = model.to(device)
+image = image.to(device)
 
+# Initialize an explainer for your model using SHAP's DeepExplainer
+explainer = shap.DeepExplainer(model, data=test_loader)
 
-# Create the LIME explainer
-explainer = LimeImageExplainer()
+# Calculate SHAP values for your chosen image
+shap_values = explainer(image)
 
-# Explain the model's predictions for the image
-explanation = explainer.explain_instance(
-    image[0].permute(1, 2, 0).numpy(), predict, top_labels=5, num_samples=2000
-)
-
-# Get the image and mask for the explanation
-image, mask = explanation.get_image_and_mask(
-    explanation.top_labels[0], positive_only=False, num_features=5, hide_rest=False
-)
-
-# Display the explanation
-plt.imshow(image)
-plt.show()
+# Summarize the feature importance for the specific image
+shap.summary_plot(shap_values, image)

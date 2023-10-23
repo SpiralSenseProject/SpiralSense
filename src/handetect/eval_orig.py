@@ -13,10 +13,12 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     confusion_matrix,
+    matthews_corrcoef,
     ConfusionMatrixDisplay,
     roc_curve,
     auc,
     average_precision_score,
+    cohen_kappa_score,
 )
 from sklearn.preprocessing import label_binarize
 from configs import *
@@ -27,7 +29,7 @@ from data_loader import load_data  # Import the load_data function
 # SquuezeNet: 0.8865856365856365
 
 
-rcParams['font.family'] = 'Times New Roman'
+rcParams["font.family"] = "Times New Roman"
 
 # Load the model
 model = MODEL.to(DEVICE)
@@ -103,18 +105,32 @@ def predict_image(image_path, model, transform):
     true_classes_tensor = torch.tensor(true_classes)
 
     # Calculate the confusion matrix
-    conf_matrix = confusion_matrix(true_classes, predicted_labels)
+    conf_matrix = confusion_matrix(
+        true_classes,
+        predicted_labels,
+    )
 
     # Plot the confusion matrix
-    ConfusionMatrixDisplay(
-        confusion_matrix=conf_matrix, display_labels=range(NUM_CLASSES)
-    ).plot(cmap=plt.cm.Blues)
+    ConfusionMatrixDisplay(confusion_matrix=conf_matrix, display_labels=CLASSES).plot(
+        cmap=plt.cm.Blues, xticks_rotation=25
+    )
+    # Use the exported value of margin_left to adjust the space between the yticklabels and the yticks
+    plt.subplots_adjust(
+        top=0.935,
+        bottom=0.155,
+        left=0.125,
+        right=0.905,
+        hspace=0.2,
+        wspace=0.2,
+    )
     plt.title("Confusion Matrix")
+    manager = plt.get_current_fig_manager()
+    manager.full_screen_toggle()
     plt.savefig("docs/efficientnet/confusion_matrix.png")
     plt.show()
 
     # Classification report
-    class_names = [str(cls) for cls in range(NUM_CLASSES)]
+    class_names = CLASSES
     report = classification_report(
         true_classes, predicted_labels, target_names=class_names
     )
@@ -156,7 +172,7 @@ def predict_image(image_path, model, transform):
     )
     plt.savefig("docs/efficientnet/prc.png")
     plt.show()
-    
+
     # Plot ROC curve
     plt.figure(figsize=(10, 6))
     plt.plot(fpr, tpr)
@@ -172,6 +188,13 @@ def predict_image(image_path, model, transform):
     )
     plt.savefig("docs/efficientnet/roc.png")
     plt.show()
+    
+    
+    # Matthew's correlation coefficient
+    print("Matthew's correlation coefficient:", matthews_corrcoef(true_classes, predicted_labels))
+    
+    # Cohen's kappa
+    print("Cohen's kappa:", cohen_kappa_score(true_classes, predicted_labels))
 
 
 predict_image("data/test/Task 1/", model, preprocess)

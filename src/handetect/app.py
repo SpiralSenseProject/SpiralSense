@@ -1,63 +1,150 @@
 import gradio as gr
 import predict as predict
 import extract as extract
+import lime_eval as lime_eval
+
 
 def upload_file(files):
     file_paths = [file.name for file in files]
     return file_paths
 
 
-def process_file(webcam_filepath, upload_filepath, ):
+def process_file(
+    upload_filepath,
+    gradcam_toggle,
+    lime_toggle,
+):
+    print("Upload filepath:", upload_filepath)
+    print("GradCAM toggle:", gradcam_toggle)
+    print("LIME toggle:", lime_toggle)
     result = []
-    if webcam_filepath == None:
-        sorted_classes = predict.predict_image(upload_filepath)
-        for class_label, class_prob in sorted_classes:
-            class_prob = class_prob.item().__round__(2)
-            result.append(f"{class_label}: {class_prob}%")
+    sorted_classes = predict.predict_image(upload_filepath)
+    for class_label, class_prob in sorted_classes:
+        class_prob = class_prob.item().__round__(2)
+        result.append(f"{class_label}: {class_prob}%")
+    result = result[:4]
+    if gradcam_toggle == True:
         cam = extract.extract_gradcam(upload_filepath, save_path="gradcam.jpg")
-        result = result[:3]
         result.append("gradcam.jpg")
-        return result
-    elif upload_filepath == None:
-        sorted_classes = predict.predict_image(webcam_filepath)
-        for class_label, class_prob in sorted_classes:
-            class_prob = class_prob.item().__round__(2)
-            result.append(f"{class_label}: {class_prob}%")
-        cam = extract.extract_gradcam(webcam_filepath, save_path="gradcam.jpg")
-        result = result[:3]
-        result.append("gradcam.jpg")
-        return result
     else:
-        sorted_classes = predict.predict_image(upload_filepath)
-        for class_label, class_prob in sorted_classes:
-            class_prob = class_prob.item().__round__(2)
-            result.append(f"{class_label}: {class_prob}%")
-        cam = extract.extract_gradcam(upload_filepath, save_path="gradcam.jpg")
-        # Only keep the first 3 results
-        result = result[:3]
-        result.append("gradcam.jpg")
-        return result
+        result.append(None)
+    if lime_toggle == True:
+        lime = lime_eval.generate_lime(upload_filepath, save_path="lime.jpg")
+        result.append("lime.jpg")
+    else:
+        result.append(None)
+    return result
+    # else:
+    #     sorted_classes = predict.predict_image(upload_filepath)
+    #     for class_label, class_prob in sorted_classes:
+    #         class_prob = class_prob.item().__round__(2)
+    #         result.append(f"{class_label}: {class_prob}%")
+    #     result = result[:4]
+    #     if gradcam_toggle == 1:
+    #         cam = extract.extract_gradcam(upload_filepath, save_path="gradcam.jpg")
+    #         result.append("gradcam.jpg")
+    #     if lime_toggle == 1:
+    #         lime = lime_eval.generate_lime(upload_filepath, save_path="lime.jpg")
+    #         result.append("lime.jpg")
+    #     return result
 
 
+# Prerun to innitialize the model
+# process_file(None, r"data\test\Task 1\Dystonia\0c08d2ea-8e1c-4ac6-92db-a752388b30cf.png")
 
-demo = gr.Interface(
-    theme="gradio/soft",
-    fn=process_file,
-    title="HANDETECT",
-    
-    inputs=[
-        gr.components.Image(type="filepath", label="Choose Image", source="upload"),
-    ],
-    outputs=[
-        gr.outputs.Textbox(label="Probability 1"),
-        gr.outputs.Textbox(label="Probability 2"),
-        gr.outputs.Textbox(label="Probability 3"),
-        # GradCAM
-        gr.outputs.Image(label="GradCAM++", type="filepath"),
-        
-        
-    ],
-    
-)
+css = """
+.block {
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+}
+#image_input {
+    width: 200% !important;
+}
+#image_input img {
+    width: 200% !important;
+}
+.output-image {
+    width: 70% !important;
+        text-align: -webkit-center !important;
+}
+.output-image img {
+    width:  300px !important;
+}
+.toggle {
+    width: 17% !important;
+}
+.show-api {
+    visibility: hidden !important;
+}
+
+.built-with {
+    visibility: hidden !important;
+}
+"""
+
+block = gr.Blocks(title="HANDETECT", css=css, theme="gradio/soft")
+
+block.queue()
+block.title = "HANDETECT"
+
+with block as demo:
+    with gr.Column():
+        with gr.Row():
+            image_input = gr.Image(
+                type="filepath",
+                label="Choose Image",
+                source="upload",
+                elem_id="image_input",
+            )
+            with gr.Column():
+                gradcam_toggle = gr.Checkbox(
+                    label="GradCAM", default=False
+                )
+                lime_toggle = gr.Checkbox(
+                    label="LIME", default=False
+                )
+        with gr.Row():
+            submit_button = gr.Button(value="Submit")
+            # cancel_button = gr.Button(value="Cancel")
+        # theme="gradio/soft",
+        # fn=process_file,
+        # title="HANDETECT",
+        # outputs=[
+        with gr.Row():
+            prob1_textbox = gr.outputs.Textbox(label="Probability 1")
+            prob2_textbox = gr.outputs.Textbox(label="Probability 2")
+            prob3_textbox = gr.outputs.Textbox(label="Probability 3")
+            prob4_textbox = gr.outputs.Textbox(label="Probability 4")
+            # GradCAM
+        with gr.Row():
+            gradcam_output = gr.Image(
+                label="Feature Explanation",
+                type="filepath",
+                elem_classes=["output-image"],
+            )
+            lime_output = gr.Image(
+                label="Feature Explanation",
+                type="filepath",
+                elem_classes=["output-image"],
+            )
+
+        submit_button.click(
+            process_file,
+            [image_input, gradcam_toggle, lime_toggle],
+            [
+                prob1_textbox,
+                prob2_textbox,
+                prob3_textbox,
+                prob4_textbox,
+                gradcam_output,
+                lime_output,
+            ],
+            show_progress="minimal",
+            preprocess=upload_file,
+            scroll_to_output=True,
+            # cancels=[cancel_button],
+        )
+
 
 demo.launch()
