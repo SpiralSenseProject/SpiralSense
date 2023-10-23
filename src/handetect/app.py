@@ -59,12 +59,12 @@ css = """
     width: 100%;
 }
 #image_input {
-    width: 237px !important;
-    height: 237px !important;
+    width: 300px !important;
+    height: 300px !important;
 }
 #image_input img {
-    width: 237px !important;
-    height: 237px !important;
+    width: 300px !important;
+    height: 300px !important;
 }
 .output-image {
     width: 70% !important;
@@ -87,7 +87,7 @@ css = """
 #title-label {
     font-size: 35px !important;
     text-align: -webkit-center !important;
-    margin-block-end: -50px;
+    margin-block-end: -55px;
 }
 #desc-label {
     font-size: 15px !important;
@@ -112,6 +112,17 @@ with block as demo:
             elem_id="desc-label",
             show_label=False
         )
+        # gr.Markdown(
+        #     """
+        #     <h1 style="text-align: center;">SpiralSense</h1>
+        #     <h4 style="text-align: center;">Cost-Effective, Portable And Stressless Spiral Drawing Analysing Web Application for Early Detection of Multiple Neurological Disorders with 96% Accuracy</h4>
+        #     """
+        # )
+        # gr.Markdown(
+        #     """
+        #     <h4 style="text-align: center;">------------------------------------------</h4>
+        #     """
+        # )
         with gr.Row():
             image_input = gr.Image(
                 type="filepath",
@@ -120,8 +131,10 @@ with block as demo:
                 elem_id="image_input",
             )
             with gr.Column():
-                feature_explanation = gr.Label(
-                    "Feature Explanation Toggle", elem_id="feature-explanation", show_label=False
+                gr.Markdown(
+                    """
+                    <h4>Feature Explanations</h4>
+                    """
                 )
                 gradcam_toggle = gr.Checkbox(label="GradCAM++")
                 lime_toggle = gr.Checkbox(label="LIME")
@@ -133,6 +146,7 @@ with block as demo:
                 )
         with gr.Row():
             submit_button = gr.Button(value="Submit")
+        gr.Markdown("<br>")
             # cancel_button = gr.Button(value="Cancel")
         # theme="gradio/soft",
         # fn=process_file,
@@ -146,12 +160,12 @@ with block as demo:
             # GradCAM
         with gr.Row():
             gradcam_output = gr.Image(
-                label="Feature Explanation",
+                label="GradCAM++",
                 type="filepath",
                 elem_classes=["output-image"],
             )
             lime_output = gr.Image(
-                label="Feature Explanation",
+                label="LIME",
                 type="filepath",
                 elem_classes=["output-image"],
             )
