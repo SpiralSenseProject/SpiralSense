@@ -19,4 +19,7 @@ training_curves.png
 data
 gradcam.jpg
 *sqlite3
+lime.jpg
+log.csv
+docs
 ```
