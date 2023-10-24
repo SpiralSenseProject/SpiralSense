@@ -1,7 +1,7 @@
 import gradio as gr
 import predict as predict
-import extract as extract
-import lime_eval as lime_eval
+import extract_gradcam as extract_gradcam
+import extract_lime as extract_lime
 
 
 def upload_file(files):
@@ -24,12 +24,12 @@ def process_file(
         result.append(f"{class_label}: {class_prob}%")
     result = result[:4]
     if gradcam_toggle == True:
-        cam = extract.extract_gradcam(upload_filepath, save_path="gradcam.jpg")
+        cam = extract_gradcam.extract_gradcam(upload_filepath, save_path="gradcam.jpg")
         result.append("gradcam.jpg")
     else:
         result.append(None)
     if lime_toggle == True:
-        lime = lime_eval.generate_lime(upload_filepath, save_path="lime.jpg")
+        lime = extract_lime.generate_lime(upload_filepath, save_path="lime.jpg")
         result.append("lime.jpg")
     else:
         result.append(None)
