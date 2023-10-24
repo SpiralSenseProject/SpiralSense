@@ -19,14 +19,11 @@ from sklearn.metrics import (
     auc,
     average_precision_score,
     cohen_kappa_score,
+    
 )
 from sklearn.preprocessing import label_binarize
 from configs import *
 from data_loader import load_data  # Import the load_data function
-
-# MobileNet: 0.8731189445475158
-# EfficientNet: 0.873118944547516
-# SquuezeNet: 0.8865856365856365
 
 
 rcParams["font.family"] = "Times New Roman"
