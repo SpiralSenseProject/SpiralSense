@@ -1,6 +1,3 @@
-import os
-import torchvision
-import shap
 import torch
 import numpy as np
 import pathlib
@@ -23,7 +20,6 @@ from sklearn.metrics import (
 )
 from sklearn.preprocessing import label_binarize
 from configs import *
-from data_loader import load_data  # Import the load_data function
 
 
 rcParams["font.family"] = "Times New Roman"
@@ -123,7 +119,7 @@ def predict_image(image_path, model, transform):
     plt.title("Confusion Matrix")
     manager = plt.get_current_fig_manager()
     manager.full_screen_toggle()
-    plt.savefig("docs/efficientnet/confusion_matrix.png")
+    plt.savefig("docs/evaluation/confusion_matrix.png")
     plt.show()
 
     # Classification report
@@ -167,7 +163,7 @@ def predict_image(image_path, model, transform):
         "AUC-PRC = {:.3f}".format(auc_prc),
         bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
     )
-    plt.savefig("docs/efficientnet/prc.png")
+    plt.savefig("docs/evaluation/prc.png")
     plt.show()
 
     # Plot ROC curve
@@ -183,7 +179,7 @@ def predict_image(image_path, model, transform):
         "AUC-ROC = {:.3f}".format(auc_roc),
         bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
     )
-    plt.savefig("docs/efficientnet/roc.png")
+    plt.savefig("docs/evaluation/roc.png")
     plt.show()
     
     

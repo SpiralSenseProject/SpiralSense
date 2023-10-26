@@ -1,33 +1,36 @@
 import os
 import optuna
-from optuna.trial import TrialState
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.utils.data
 from configs import *
 import data_loader
 from torch.utils.tensorboard import SummaryWriter
+import time
 import numpy as np
-import pygad
-import pygad.torchga
+import random
+
+random.seed(RANDOM_SEED)
+torch.cuda.manual_seed(RANDOM_SEED)
+torch.manual_seed(RANDOM_SEED)
+print("PyTorch Seed:", torch.initial_seed())
+print("Random Seed:", random.getstate()[1][0])
+print("PyTorch CUDA Seed:", torch.cuda.initial_seed())
 
 torch.cuda.empty_cache()
-model = MODEL.to(DEVICE)
 
-EPOCHS = 10
-N_TRIALS = 20
-TIMEOUT = 1800
-EARLY_STOPPING_PATIENCE = (
-    4  # Number of epochs with no improvement to trigger early stopping
-)
-NUM_GENERATIONS = 10
-SOL_PER_POP = 10  # Number of solutions in the population
-NUM_GENES = 2
-NUM_PARENTS_MATING = 4
+# Define the constants for genetic algorithmtu
+POPULATION_SIZE = 5
+MUTATION_RATE = 0.2
+CROSSOVER_RATE = 0.7
+NUM_GENERATIONS = 5
 
+EPOCHS = 5
+
+EARLY_STOPPING_PATIENCE = 4
 # Create a TensorBoard writer
 writer = SummaryWriter(log_dir="output/tensorboard/tuning")
-
 
 # Function to create or modify data loaders with the specified batch size
 def create_data_loaders(batch_size):
@@ -38,211 +41,211 @@ def create_data_loaders(batch_size):
     )
     return train_loader, valid_loader
 
+# Create a TensorBoard writer
+writer = SummaryWriter(log_dir="output/tensorboard/tuning")
+model = MODEL.to(DEVICE)
+# model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
 
-# Objective function for optimization
-def objective(trial):
-    global data_inputs, data_outputs
-
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
-    train_loader, valid_loader = create_data_loaders(batch_size)
-
-    lr = trial.suggest_float("lr", 1e-5, 1e-3, log=True)
+def fitness_function(individual,model):
+    batch_size, lr = individual
+    
+    # Assuming you have a model, optimizer, and loss function defined
+    model = model.to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    gamma = trial.suggest_float("gamma", 0.1, 0.9, step=0.1)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+    # Define your data loaders using the given batch_size
+    train_loader, valid_loader = create_data_loaders(batch_size)
 
-    past_trials = 0  # Number of trials already completed
-
-    # Print best hyperparameters:
-    if past_trials > 0:
-        print("\nBest Hyperparameters:")
-        print(f"{study.best_trial.params}")
-
-    print(f"\n[INFO] Trial: {trial.number}")
-    print(f"Batch Size: {batch_size}")
-    print(f"Learning Rate: {lr}")
-    print(f"Gamma: {gamma}\n")
-
-    early_stopping_counter = 0
-    best_accuracy = 0.0
-
+    # Training loop
     for epoch in range(EPOCHS):
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader, 0):
             data, target = data.to(DEVICE), target.to(DEVICE)
             optimizer.zero_grad()
-            output = model(data)
+            if model.__class__.__name__ == "GoogLeNet":
+                output = model(data).logits
+            else:
+                output = model(data)
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
 
-        scheduler.step()
-
+        # Validation loop
         model.eval()
         correct = 0
         with torch.no_grad():
             for batch_idx, (data, target) in enumerate(valid_loader, 0):
                 data, target = data.to(DEVICE), target.to(DEVICE)
+                data, targets_a, targets_b, lam = cutmix_data(data, target, alpha=1)
+                output = model(data)
+                pred = output.argmax(dim=1, keepdim=True)
+                correct += pred.eq(target.view_as(pred)).sum().item()
+
+        accuracy = correct / len(valid_loader.dataset)
+        print(f"Epoch {epoch + 1}/{EPOCHS}, Accuracy: {accuracy:.4f}")
+    return accuracy,
+
+def rand_bbox(size, lam):
+    W = size[2]
+    H = size[3]
+    cut_rat = np.sqrt(1.0 - lam)
+    cut_w = np.int_(W * cut_rat)
+    cut_h = np.int_(H * cut_rat)
+
+    # uniform
+    cx = np.random.randint(W)
+    cy = np.random.randint(H)
+
+    bbx1 = np.clip(cx - cut_w // 2, 0, W)
+    bby1 = np.clip(cy - cut_h // 2, 0, H)
+    bbx2 = np.clip(cx + cut_w // 2, 0, W)
+    bby2 = np.clip(cy + cut_h // 2, 0, H)
+
+    return bbx1, bby1, bbx2, bby2
+
+def cutmix_data(input, target, alpha=1.0):
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    batch_size = input.size()[0]
+    index = torch.randperm(batch_size)
+    rand_index = torch.randperm(input.size()[0])
+
+    bbx1, bby1, bbx2, bby2 = rand_bbox(input.size(), lam)
+    input[:, :, bbx1:bbx2, bby1:bby2] = input[rand_index, :, bbx1:bbx2, bby1:bby2]
+
+    lam = 1 - ((bbx2 - bbx1) * (bby2 - bby1) / (input.size()[-1] * input.size()[-2]))
+    targets_a = target
+    targets_b = target[rand_index]
+
+    return input, targets_a, targets_b, lam
+
+def cutmix_criterion(criterion, outputs, targets_a, targets_b, lam):
+    return lam * criterion(outputs, targets_a) + (1 - lam) * criterion(outputs, targets_b)
+
+# Function to create or modify data loaders with the specified batch size
+def create_data_loaders(batch_size):
+    print(f"Batch Size (before conversion): {batch_size}")
+    batch_size = int(batch_size)  # Ensure batch_size is an integer
+    print(f"Batch Size (after conversion): {batch_size}")
+    train_loader, valid_loader = data_loader.load_data(
+        COMBINED_DATA_DIR + "1",
+        preprocess,
+        batch_size=batch_size,
+    )
+    return train_loader, valid_loader
+
+# Genetic algorithm initialization functions
+def create_individual():
+    lr = abs(10 ** (np.random.uniform(-4, -2)))
+    print(f"Generated lr: {lr}")
+    return creator.Individual([
+        int(np.random.choice([16, 32])),  # Choose a valid batch size
+        lr,  # lr in log scale between 1e-4 and 1e-2
+    ])
+# Genetic algorithm evaluation function
+def evaluate_individual(individual, model=MODEL):
+    batch_size, lr= individual
+    lr=abs(lr)
+    # Assuming you have a model, optimizer, and loss function defined
+    model = model.to(DEVICE)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    criterion = nn.CrossEntropyLoss()
+
+    # Define your data loaders using the given batch_size
+    train_loader, valid_loader = create_data_loaders(batch_size)
+
+    # Training loop
+    for epoch in range(EPOCHS):
+        model.train()
+        for batch_idx, (data, target) in enumerate(train_loader, 0):
+            data, target = data.to(DEVICE), target.to(DEVICE)
+            optimizer.zero_grad()
+            # Apply CutMix
+            data, targets_a, targets_b, lam = cutmix_data(data, target, alpha=1)
+            if model.__class__.__name__ == "GoogLeNet":
+                output = model(data).logits
+            else:
+                output = model(data)
+            loss = cutmix_criterion(criterion, output, targets_a, targets_b, lam)
+            loss.backward()
+            optimizer.step()
+
+        # Validation loop
+        model.eval()
+        correct = 0
+        with torch.no_grad():
+            for batch_idx, (data, target) in enumerate(valid_loader, 0):
+                data, target = data.to(DEVICE), target.to(DEVICE)
+                data, targets_a, targets_b, lam = cutmix_data(data, target, alpha=1)
                 output = model(data)
                 pred = output.argmax(dim=1, keepdim=True)
                 correct += pred.eq(target.view_as(pred)).sum().item()
 
         accuracy = correct / len(valid_loader.dataset)
 
-        # Log hyperparameters and accuracy to TensorBoard
-        writer.add_scalar("Accuracy", accuracy, trial.number)
-        writer.add_hparams(
-            {"batch_size": batch_size, "lr": lr, "gamma": gamma},
-            {"accuracy": accuracy},
-        )
+        # Log accuracy or other metrics as needed
+        writer.add_scalar("Accuracy", accuracy, epoch)
 
-        print(f"[EPOCH {epoch + 1}] Accuracy: {accuracy:.4f}")
+        print(f"Epoch {epoch + 1}/{EPOCHS}, Accuracy: {accuracy:.4f}")
 
-        trial.report(accuracy, epoch)
-
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            early_stopping_counter = 0
-        else:
-            early_stopping_counter += 1
-
-        # Early stopping check
-        if early_stopping_counter >= EARLY_STOPPING_PATIENCE:
-            print(f"\nEarly stopping at epoch {epoch + 1}")
-            break
-
-    if trial.number > 10 and trial.params["lr"] < 1e-3 and best_accuracy < 0.7:
-        return float("inf")
-
-    past_trials += 1
-
-    return best_accuracy
-
-
-# Custom genetic algorithm
-def run_genetic_algorithm(fitness_func):
-    # Initial population
-    population = np.random.rand(SOL_PER_POP, NUM_GENES)  # Random initialization
-
-    # Run for a fixed number of generations
-    for generation in range(NUM_GENERATIONS):
-        # Calculate fitness for each solution in the population
-        fitness = np.array(
-            [fitness_func(solution, idx) for idx, solution in enumerate(population)]
-        )
-
-        # Get the index of the best solution
-        best_idx = np.argmax(fitness)
-        best_solution = population[best_idx]
-        best_fitness = fitness[best_idx]
-
-        # Print the best solution and fitness for this generation
-        print(f"Generation {generation + 1}:")
-        print("Best Solution:")
-        print("Learning Rate = {lr}".format(lr=best_solution[0]))
-        print("Gamma = {gamma}".format(gamma=best_solution[1]))
-        print("Best Fitness = {fitness}".format(fitness=best_fitness))
-
-        # Perform selection and crossover to create the next generation
-        population = selection_and_crossover(population, fitness)
-
-
-# Selection and crossover logic
-def selection_and_crossover(population, fitness):
-    # Perform tournament selection
-    parents = []
-    for _ in range(SOL_PER_POP):
-        tournament_idxs = np.random.choice(range(SOL_PER_POP), NUM_PARENTS_MATING)
-        tournament_fitness = [fitness[idx] for idx in tournament_idxs]
-        selected_parent_idx = tournament_idxs[np.argmax(tournament_fitness)]
-        parents.append(population[selected_parent_idx])
-
-    # Perform single-point crossover
-    offspring = []
-    for i in range(0, SOL_PER_POP, 2):
-        if i + 1 < SOL_PER_POP:
-            crossover_point = np.random.randint(0, NUM_GENES)
-            offspring.extend(
-                [
-                    np.concatenate(
-                        (parents[i][:crossover_point], parents[i + 1][crossover_point:])
-                    )
-                ]
-            )
-            offspring.extend(
-                [
-                    np.concatenate(
-                        (parents[i + 1][:crossover_point], parents[i][crossover_point:])
-                    )
-                ]
-            )
-
-    return np.array(offspring)
-
-
-# Modify callback function to log best accuracy
-def callback_generation(ga_instance):
-    global study
-
-    # Fetch the parameters of the best solution
-    solution, solution_fitness, _ = ga_instance.best_solution()
-    best_learning_rate, best_gamma = solution
-
-    # Report the best accuracy to Optuna study
-    study.set_user_attr("best_accuracy", solution_fitness)
-
-    # Print generation number and best fitness
-    print(
-        "Generation = {generation}".format(generation=ga_instance.generations_completed)
-    )
-    print("Best Fitness = {fitness}".format(fitness=solution_fitness))
-    print("Best Learning Rate = {lr}".format(lr=best_learning_rate))
-    print("Best Gamma = {gamma}".format(gamma=best_gamma))
-
+    # Return the accuracy (or any other metric you want to optimize)
+    return (accuracy,)
 
 if __name__ == "__main__":
-    global study
     pruner = optuna.pruners.HyperbandPruner()
+
+    start_time = time.time()
     study = optuna.create_study(
         direction="maximize",
         pruner=pruner,
-        study_name="hyperparameter_tuning",
+        study_name="hyperparameter_tuning96",  # Same name as the existing study
+        storage="sqlite:///" + MODEL.__class__.__name__ + ".sqlite3",  # Load the existing study if it exists
     )
 
-    # Define data_inputs and data_outputs
-    # You need to populate these with your own data
+    # Run genetic algorithm to optimize batch_size, lr
+    from deap import base, creator, tools, algorithms
 
-    # Define the loss function
-    loss_function = nn.CrossEntropyLoss()
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 
-    def fitness_func(solution, sol_idx):
-        global data_inputs, data_outputs, model, loss_function
+    # Create an individual class containing the hyperparameter (learning rate)
+    creator.create("Individual", list, fitness=creator.FitnessMax)
 
-        learning_rate, momentum = solution
+    # Initialize the genetic algorithm toolbox
+    toolbox = base.Toolbox()
+    toolbox.register("individual", create_individual)
+    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+    toolbox.register("evaluate", fitness_function, model=model)
+    toolbox.register("mate", tools.cxTwoPoint)
+    toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=0.1, indpb=MUTATION_RATE)
+    toolbox.register("select", tools.selTournament, tournsize=3)
 
-        # Update optimizer with the current learning rate and momentum
-        optimizer = torch.optim.SGD(
-            model.parameters(), lr=learning_rate, momentum=momentum
-        )
+    # Create the initial population
+    population = toolbox.population(n=POPULATION_SIZE)
 
-        # Load the model weights
-        model_weights_dict = pygad.torchga.model_weights_as_dict(
-            model=model, weights_vector=solution
-        )
-        model.load_state_dict(model_weights_dict)
+    # Before running the genetic algorithm, evaluate the initial population
+    for ind in population:
+        print(type(ind))  # Debug print statement
+        fitness_value = evaluate_individual(ind, model)
+        ind.fitness.values = (fitness_value[0],)
 
-        # Forward pass
-        predictions = model(data_inputs)
+    # Run the genetic algorithm
+    algorithms.eaSimple(population, toolbox, cxpb=CROSSOVER_RATE, mutpb=MUTATION_RATE, ngen=NUM_GENERATIONS, stats=None, halloffame=None, verbose=True)
+    # Access the best trial and display its information here
+    best_individual = tools.selBest(population, 1)[0]
+    best_batch_size, best_lr = best_individual
 
-        # Calculate cross-entropy loss
-        loss = loss_function(predictions, data_outputs)
+    # Evaluate the best individual again to get its accuracy
+    best_accuracy = evaluate_individual(best_individual, model)
 
-        # Higher fitness for lower loss
-        solution_fitness = 1.0 / (loss.detach().numpy() + 1e-8)
+    print("Best Hyperparameters:")
+    print(f"Batch Size: {best_batch_size}")
+    print(f"Learning Rate: {best_lr}")
+    print(f"Best Accuracy: {best_accuracy[0]}")
 
-        return solution_fitness
-
-    # Run the custom genetic algorithm
-    run_genetic_algorithm(fitness_func)
+    end_time = time.time()
+    tuning_duration = end_time - start_time
+    print(f"Hyperparameter tuning took {tuning_duration:.2f} seconds.")

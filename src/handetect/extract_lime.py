@@ -1,12 +1,10 @@
+import os
 import numpy as np
 from lime.lime_image import LimeImageExplainer
 from PIL import Image
 import torch
-import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
 from configs import *
-from sklearn.preprocessing import minmax_scale
 
 
 model = MODEL.to(DEVICE)
@@ -34,7 +32,6 @@ def generate_lime(image_path=None, save_path=None):
                 print("Processing", image_path)
                 image_path = r"data\test\Task 1\{}\{}".format(disease, image_path)
                 image_name = image_path.split(".")[0].split("\\")[-1]
-                print("Processing", image_name)
                 image = Image.open(image_path).convert("RGB")
                 image = preprocess(image)
                 image = image.unsqueeze(0)  # Add batch dimension
@@ -67,9 +64,9 @@ def generate_lime(image_path=None, save_path=None):
                 image = (image - np.min(image)) / (np.max(image) - np.min(image))
 
                 # image = Image.fromarray(image)
-                os.makedirs(f"docs/efficientnet/lime/{disease}", exist_ok=True)
-                # image.save(f'docs/efficientnet/lime/{disease}/{image_name}.jpg')
-                plt.imsave(f"docs/efficientnet/lime/{disease}/{image_name}.jpg", image)
+                os.makedirs(f"docs/evaluation/lime/{disease}", exist_ok=True)
+                # image.save(f'docs/evaluation/lime/{disease}/{image_name}.jpg')
+                plt.imsave(f"docs/evaluation/lime/{disease}/{image_name}.jpg", image)
 
     else:
         image = None
@@ -103,6 +100,9 @@ def generate_lime(image_path=None, save_path=None):
         image = (image - np.min(image)) / (np.max(image) - np.min(image))
 
         # image = Image.fromarray(image)
-        # os.makedirs(f"docs/efficientnet/lime/{disease}", exist_ok=True)
-        # image.save(f'docs/efficientnet/lime/{disease}/{image_name}.jpg')
+        # os.makedirs(f"docs/evaluation/lime/{disease}", exist_ok=True)
+        # image.save(f'docs/evaluation/lime/{disease}/{image_name}.jpg')
         plt.imsave(save_path, image)
+
+
+generate_lime()
