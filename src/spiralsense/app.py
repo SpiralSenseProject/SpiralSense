@@ -34,23 +34,7 @@ def process_file(
     else:
         result.append(None)
     return result
-    # else:
-    #     sorted_classes = predict.predict_image(upload_filepath)
-    #     for class_label, class_prob in sorted_classes:
-    #         class_prob = class_prob.item().__round__(2)
-    #         result.append(f"{class_label}: {class_prob}%")
-    #     result = result[:4]
-    #     if gradcam_toggle == 1:
-    #         cam = extract.extract_gradcam(upload_filepath, save_path="gradcam.jpg")
-    #         result.append("gradcam.jpg")
-    #     if lime_toggle == 1:
-    #         lime = lime_eval.generate_lime(upload_filepath, save_path="lime.jpg")
-    #         result.append("lime.jpg")
-    #     return result
 
-
-# Prerun to innitialize the model
-# process_file(None, r"data\test\Task 1\Dystonia\0c08d2ea-8e1c-4ac6-92db-a752388b30cf.png")
 
 css = """
 .block {
@@ -108,21 +92,10 @@ with block as demo:
     with gr.Column():
         gr.Label("SpiralSense", elem_id="title-label", show_label=False)
         gr.Label(
-            "Cost-Effective, Portable And Stressless Spiral Drawing Analysing Web Application for Early Detection of Multiple Neurological Disorders with 96% Accuracy",
+            "A Stress-free, Portable, and Cost-effective Machine Learning-Powered Web Application for Early Detection of Multiple Neurological Disorders through Spiral Drawing Analysis",
             elem_id="desc-label",
-            show_label=False
+            show_label=False,
         )
-        # gr.Markdown(
-        #     """
-        #     <h1 style="text-align: center;">SpiralSense</h1>
-        #     <h4 style="text-align: center;">Cost-Effective, Portable And Stressless Spiral Drawing Analysing Web Application for Early Detection of Multiple Neurological Disorders with 96% Accuracy</h4>
-        #     """
-        # )
-        # gr.Markdown(
-        #     """
-        #     <h4 style="text-align: center;">------------------------------------------</h4>
-        #     """
-        # )
         with gr.Row():
             image_input = gr.Image(
                 type="filepath",
@@ -147,11 +120,6 @@ with block as demo:
         with gr.Row():
             submit_button = gr.Button(value="Submit")
         gr.Markdown("<br>")
-            # cancel_button = gr.Button(value="Cancel")
-        # theme="gradio/soft",
-        # fn=process_file,
-        # title="HANDETECT",
-        # outputs=[
         with gr.Row():
             prob1_textbox = gr.outputs.Textbox(label="Probability 1")
             prob2_textbox = gr.outputs.Textbox(label="Probability 2")
@@ -184,7 +152,6 @@ with block as demo:
             show_progress="minimal",
             preprocess=upload_file,
             scroll_to_output=True,
-            # cancels=[cancel_button],
         )
 
 
