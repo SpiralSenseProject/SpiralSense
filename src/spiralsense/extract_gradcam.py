@@ -3,6 +3,7 @@ from pytorch_grad_cam.utils.image import show_cam_on_image, preprocess_image
 import cv2
 import numpy as np
 import torch
+import time
 import torch.nn as nn  # Replace with your model
 from configs import *
 import os, random
@@ -98,5 +99,7 @@ def extract_gradcam(image_path=None, save_path=None):
 
         return save_path
 
-
+start = time.time()
 extract_gradcam()
+end = time.time()
+print("Time taken:", end - start)

@@ -11,18 +11,19 @@ import time
 import numpy as np
 import random
 
-random.seed(RANDOM_SEED)
-torch.cuda.manual_seed(RANDOM_SEED)
-torch.manual_seed(RANDOM_SEED)
+torch.cuda.empty_cache()
+RANDOM_SEED1=42
+random.seed(RANDOM_SEED1)
+torch.cuda.manual_seed(RANDOM_SEED1)
+torch.manual_seed(RANDOM_SEED1)
 print("PyTorch Seed:", torch.initial_seed())
 print("Random Seed:", random.getstate()[1][0])
 print("PyTorch CUDA Seed:", torch.cuda.initial_seed())
 
-torch.cuda.empty_cache()
 
-# Define the constants for genetic algorithmtu
+# Define the constants for genetic algorithm
 POPULATION_SIZE = 5
-MUTATION_RATE = 0.2
+MUTATION_RATE = 0.05
 CROSSOVER_RATE = 0.7
 NUM_GENERATIONS = 5
 
@@ -47,13 +48,13 @@ model = MODEL.to(DEVICE)
 # model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
 
 def fitness_function(individual,model):
-    batch_size, lr = individual
+    batch_size, lr,= individual
     
     # Assuming you have a model, optimizer, and loss function defined
     model = model.to(DEVICE)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
-
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=NUM_EPOCHS)
     # Define your data loaders using the given batch_size
     train_loader, valid_loader = create_data_loaders(batch_size)
 
@@ -70,7 +71,7 @@ def fitness_function(individual,model):
             loss = criterion(output, target)
             loss.backward()
             optimizer.step()
-
+        scheduler.step()
         # Validation loop
         model.eval()
         correct = 0
@@ -140,15 +141,15 @@ def create_data_loaders(batch_size):
 
 # Genetic algorithm initialization functions
 def create_individual():
-    lr = abs(10 ** (np.random.uniform(-4, -2)))
+    lr = abs(np.random.uniform(0.0006, 0.0009))
     print(f"Generated lr: {lr}")
     return creator.Individual([
-        int(np.random.choice([16, 32])),  # Choose a valid batch size
+        int(np.random.choice([32])),  # Choose a valid batch size
         lr,  # lr in log scale between 1e-4 and 1e-2
     ])
 # Genetic algorithm evaluation function
 def evaluate_individual(individual, model=MODEL):
-    batch_size, lr= individual
+    batch_size, lr, = individual
     lr=abs(lr)
     # Assuming you have a model, optimizer, and loss function defined
     model = model.to(DEVICE)
@@ -202,19 +203,16 @@ if __name__ == "__main__":
     study = optuna.create_study(
         direction="maximize",
         pruner=pruner,
-        study_name="hyperparameter_tuning96",  # Same name as the existing study
-        storage="sqlite:///" + MODEL.__class__.__name__ + ".sqlite3",  # Load the existing study if it exists
+        study_name="hyperparameter_optimization",
+        storage="sqlite:///" + MODEL.__class__.__name__ + ".sqlite3",
     )
 
-    # Run genetic algorithm to optimize batch_size, lr
     from deap import base, creator, tools, algorithms
 
     creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 
-    # Create an individual class containing the hyperparameter (learning rate)
     creator.create("Individual", list, fitness=creator.FitnessMax)
 
-    # Initialize the genetic algorithm toolbox
     toolbox = base.Toolbox()
     toolbox.register("individual", create_individual)
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
@@ -223,22 +221,18 @@ if __name__ == "__main__":
     toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=0.1, indpb=MUTATION_RATE)
     toolbox.register("select", tools.selTournament, tournsize=3)
 
-    # Create the initial population
     population = toolbox.population(n=POPULATION_SIZE)
 
-    # Before running the genetic algorithm, evaluate the initial population
     for ind in population:
-        print(type(ind))  # Debug print statement
+        print(type(ind))
         fitness_value = evaluate_individual(ind, model)
         ind.fitness.values = (fitness_value[0],)
 
-    # Run the genetic algorithm
     algorithms.eaSimple(population, toolbox, cxpb=CROSSOVER_RATE, mutpb=MUTATION_RATE, ngen=NUM_GENERATIONS, stats=None, halloffame=None, verbose=True)
-    # Access the best trial and display its information here
+
     best_individual = tools.selBest(population, 1)[0]
     best_batch_size, best_lr = best_individual
 
-    # Evaluate the best individual again to get its accuracy
     best_accuracy = evaluate_individual(best_individual, model)
 
     print("Best Hyperparameters:")
@@ -248,4 +242,4 @@ if __name__ == "__main__":
 
     end_time = time.time()
     tuning_duration = end_time - start_time
-    print(f"Hyperparameter tuning took {tuning_duration:.2f} seconds.")
+    print(f"Hyperparameter optimization took {tuning_duration:.2f} seconds.")
