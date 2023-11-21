@@ -38,6 +38,7 @@ def extract_gradcam(image_path=None, save_path=None):
                     rgb_img, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]
                 )
                 input_tensor = input_tensor.to(DEVICE)
+                input_tensor.requires_grad = True
 
                 # Create a GradCAMPlusPlus object
                 cam = GradCAMPlusPlus(
@@ -74,6 +75,7 @@ def extract_gradcam(image_path=None, save_path=None):
             rgb_img, mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]
         )
         input_tensor = input_tensor.to(DEVICE)
+        input_tensor.requires_grad = True
 
         # Create a GradCAMPlusPlus object
         cam = GradCAMPlusPlus(model=model, target_layers=[target_layer])
@@ -100,7 +102,7 @@ def extract_gradcam(image_path=None, save_path=None):
 
         return save_path
 
-start = time.time()
-extract_gradcam()
-end = time.time()
-print("Time taken:", end - start)
+# start = time.time()
+# extract_gradcam()
+# end = time.time()
+# print("Time taken:", end - start)
