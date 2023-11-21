@@ -106,10 +106,10 @@ def generate_lime(image_path=None, save_path=None):
         plt.imsave(save_path, image)
 
 
-start = time.time()
+# start = time.time()
 
-generate_lime()
+# generate_lime()
 
-end = time.time()
+# end = time.time()
 
-print("Time taken:", end - start)
+# print("Time taken:", end - start)
