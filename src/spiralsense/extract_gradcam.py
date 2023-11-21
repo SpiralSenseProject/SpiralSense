@@ -22,6 +22,7 @@ for child in model.features[-1]:
 if target_layer is None:
     raise ValueError("Invalid layer name: {}".format(target_layer))
 
+print(target_layer)
 
 def extract_gradcam(image_path=None, save_path=None):
     if image_path is None:
