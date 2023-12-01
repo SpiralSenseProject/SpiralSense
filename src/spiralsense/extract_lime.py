@@ -34,6 +34,7 @@ def generate_lime(image_path=None, save_path=None):
                 image_path = r"data\test\Task 1\{}\{}".format(disease, image_path)
                 image_name = image_path.split(".")[0].split("\\")[-1]
                 image = Image.open(image_path).convert("RGB")
+                width, height = image.size
                 image = preprocess(image)
                 image = image.unsqueeze(0)  # Add batch dimension
                 image = image.to(DEVICE)
@@ -68,11 +69,17 @@ def generate_lime(image_path=None, save_path=None):
                 os.makedirs(f"docs/evaluation/lime/{disease}", exist_ok=True)
                 # image.save(f'docs/evaluation/lime/{disease}/{image_name}.jpg')
                 plt.imsave(f"docs/evaluation/lime/{disease}/{image_name}.jpg", image)
+                
+                # Resize the image to the original size
+                image = Image.open(f"docs/evaluation/lime/{disease}/{image_name}.jpg")
+                image = image.resize((width, height))   
+                image.save(f"docs/evaluation/lime/{disease}/{image_name}.jpg")
 
     else:
         image = None
         print("Processing", image_path)
         image = Image.open(image_path).convert("RGB")
+        width, height = image.size
         image = preprocess(image)
         image = image.unsqueeze(0)  # Add batch dimension
         image = image.to(DEVICE)
@@ -104,6 +111,12 @@ def generate_lime(image_path=None, save_path=None):
         # os.makedirs(f"docs/evaluation/lime/{disease}", exist_ok=True)
         # image.save(f'docs/evaluation/lime/{disease}/{image_name}.jpg')
         plt.imsave(save_path, image)
+        
+        # Resize the image to the original size
+        image = Image.open(save_path)
+        image = image.resize((width, height))
+        image.save(save_path)
+        
 
 
 # start = time.time()
@@ -113,3 +126,4 @@ def generate_lime(image_path=None, save_path=None):
 # end = time.time()
 
 # print("Time taken:", end - start)
+
