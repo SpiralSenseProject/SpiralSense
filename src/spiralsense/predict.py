@@ -25,8 +25,7 @@ from configs import *
 model = MODEL.to(DEVICE)
 # model.load_state_dict(torch.load(MODEL_SAVE_PATH, map_location=DEVICE))
 model.load_state_dict(
-    torch.load("output/checkpoints/EfficientNetB3WithDropout.pth", map_location=DEVICE)
-)
+    torch.load(f"output/checkpoints/{MODEL.__class__.__name__}.pth", map_location=DEVICE))
 model.eval()
 
 torch.set_grad_enabled(False)
